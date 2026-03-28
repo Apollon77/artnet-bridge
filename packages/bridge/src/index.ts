@@ -11,3 +11,9 @@ export {
 export { DmxMapper, type ExtractedValue } from "./dmx/DmxMapper.js";
 export { RealtimeScheduler } from "./scheduler/RealtimeScheduler.js";
 export { LimitedScheduler } from "./scheduler/LimitedScheduler.js";
+export {
+  BridgeOrchestrator,
+  type RuntimeStatus,
+  type BridgeRuntimeStatus,
+  type ProtocolAdapterFactory,
+} from "./BridgeOrchestrator.js";
