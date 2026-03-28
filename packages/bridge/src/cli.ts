@@ -52,9 +52,11 @@ function printHelp(): void {
 artnet-bridge - ArtNet/DMX bridge to IoT lighting protocols
 
 Usage:
-  artnet-bridge [options]              Start the bridge server
-  artnet-bridge config discover        Discover bridges on network
-  artnet-bridge config pair <host>     Pair with a bridge
+  artnet-bridge [options]                     Start the bridge server
+  artnet-bridge config discover <protocol>    Discover bridges (e.g. hue)
+  artnet-bridge config pair <protocol> <host> Pair with a bridge
+
+Supported protocols: hue
 
 Options:
   --config <path>   Config file path (default: ~/.artnet-bridge/config.json)
@@ -157,62 +159,101 @@ async function main(): Promise<void> {
 // Config subcommands
 // ---------------------------------------------------------------------------
 
+const SUPPORTED_PROTOCOLS = ["hue"];
+
 async function handleConfigCommand(args: string[], configManager: ConfigManager): Promise<void> {
   const subcommand = args[0];
 
   if (subcommand === "discover") {
-    const { discoverBridges } = await import("@artnet-bridge/protocol-hue");
-    console.log("Discovering Hue bridges...");
-    const bridges = await discoverBridges();
-    if (bridges.length === 0) {
-      console.log("No bridges found.");
-    } else {
-      for (const bridge of bridges) {
-        console.log(`  ${bridge.name ?? bridge.id} at ${bridge.host}`);
-      }
-    }
-  } else if (subcommand === "pair") {
-    const host = args[1];
-    if (!host) {
-      console.error("Usage: artnet-bridge config pair <host>");
+    const protocol = args[1];
+    if (!protocol) {
+      console.error("Usage: artnet-bridge config discover <protocol>");
+      console.error(`Supported protocols: ${SUPPORTED_PROTOCOLS.join(", ")}`);
       process.exit(1);
     }
-    const { pairWithBridge } = await import("@artnet-bridge/protocol-hue");
-    console.log(`Pairing with ${host}... Press the link button on your Hue bridge.`);
-    const result = await pairWithBridge(host, "artnet-bridge", "default");
-    if (result.success && result.connection) {
-      const conn = result.connection;
-      if (typeof conn.username === "string") {
-        console.log("Pairing successful!");
-        console.log(`  Username: ${conn.username}`);
-
-        // Auto-save bridge entry to config
-        const bridgeId = `hue-${host.replace(/\./g, "-")}`;
-        const config = configManager.load();
-
-        if (config.bridges.some((b) => b.id === bridgeId)) {
-          console.log(`Bridge ${bridgeId} already exists in config — skipping auto-add.`);
-        } else {
-          config.bridges.push({
-            id: bridgeId,
-            name: `Hue @ ${host}`,
-            protocol: "hue",
-            connection: result.connection,
-            universe: 0,
-            channelMappings: [],
-          });
-          configManager.save(config);
-          console.log(`Bridge '${bridgeId}' added to config.`);
-          console.log("Configure universe and channel mappings to start using it.");
-        }
-      }
-    } else {
-      console.error(`Pairing failed: ${result.error}`);
+    await handleDiscover(protocol);
+  } else if (subcommand === "pair") {
+    const protocol = args[1];
+    const host = args[2];
+    if (!protocol || !host) {
+      console.error("Usage: artnet-bridge config pair <protocol> <host>");
+      console.error(`Supported protocols: ${SUPPORTED_PROTOCOLS.join(", ")}`);
+      process.exit(1);
     }
+    await handlePair(protocol, host, configManager);
   } else {
-    console.error(`Unknown config subcommand: ${subcommand}`);
+    console.error(`Unknown config subcommand: ${subcommand ?? "(none)"}`);
     console.error("Available: discover, pair");
     process.exit(1);
+  }
+}
+
+async function handleDiscover(protocol: string): Promise<void> {
+  switch (protocol) {
+    case "hue": {
+      const { discoverBridges } = await import("@artnet-bridge/protocol-hue");
+      console.log("Discovering Hue bridges...");
+      const bridges = await discoverBridges();
+      if (bridges.length === 0) {
+        console.log("No bridges found.");
+      } else {
+        for (const bridge of bridges) {
+          console.log(`  ${bridge.name ?? bridge.id} at ${bridge.host}`);
+        }
+      }
+      break;
+    }
+    default:
+      console.error(`Unknown protocol: ${protocol}`);
+      console.error(`Supported protocols: ${SUPPORTED_PROTOCOLS.join(", ")}`);
+      process.exit(1);
+  }
+}
+
+async function handlePair(
+  protocol: string,
+  host: string,
+  configManager: ConfigManager,
+): Promise<void> {
+  switch (protocol) {
+    case "hue": {
+      const { pairWithBridge } = await import("@artnet-bridge/protocol-hue");
+      console.log(`Pairing with Hue bridge at ${host}... Press the link button now.`);
+      const result = await pairWithBridge(host, "artnet-bridge", "default");
+      if (result.success && result.connection) {
+        const conn = result.connection;
+        if (typeof conn.username === "string") {
+          console.log("Pairing successful!");
+
+          // Auto-save bridge entry to config
+          const bridgeId = `hue-${host.replace(/\./g, "-")}`;
+          const config = configManager.load();
+
+          if (config.bridges.some((b) => b.id === bridgeId)) {
+            console.log(`Bridge ${bridgeId} already exists in config — skipping auto-add.`);
+          } else {
+            config.bridges.push({
+              id: bridgeId,
+              name: `Hue @ ${host}`,
+              protocol: "hue",
+              connection: result.connection,
+              universe: 0,
+              channelMappings: [],
+            });
+            configManager.save(config);
+            console.log(`Bridge '${bridgeId}' added to config.`);
+            console.log("Configure universe and channel mappings to start using it.");
+          }
+        }
+      } else {
+        console.error(`Pairing failed: ${result.error}`);
+      }
+      break;
+    }
+    default:
+      console.error(`Unknown protocol: ${protocol}`);
+      console.error(`Supported protocols: ${SUPPORTED_PROTOCOLS.join(", ")}`);
+      process.exit(1);
   }
 }
 

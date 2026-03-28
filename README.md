@@ -31,7 +31,7 @@ After installation, the `artnet-bridge` command is available globally.
 Find Hue bridges on your local network:
 
 ```bash
-artnet-bridge config discover
+artnet-bridge config discover hue
 ```
 
 Output:
@@ -45,7 +45,7 @@ Discovering Hue bridges...
 Press the **link button** on your Hue bridge, then within 30 seconds run:
 
 ```bash
-artnet-bridge config pair 192.168.1.42
+artnet-bridge config pair hue 192.168.1.42
 ```
 
 This creates an API user on the bridge and saves the credentials to your config file at `~/.artnet-bridge/config.json`. The bridge is added with a default entry — you will configure the DMX mapping next.
@@ -179,8 +179,8 @@ artnet-bridge                        # Start the server
 artnet-bridge --config /path/to/config.json   # Custom config path
 artnet-bridge --port 9090            # Custom web UI port
 artnet-bridge --no-web               # Start without web UI
-artnet-bridge config discover        # Find Hue bridges on network
-artnet-bridge config pair <host>     # Pair with a Hue bridge
+artnet-bridge config discover hue        # Find Hue bridges on network
+artnet-bridge config pair hue <host>     # Pair with a Hue bridge
 ```
 
 See [CLI documentation](docs/cli.md) for full details.

@@ -32,10 +32,10 @@ Config subcommands perform one-time operations and exit. They do not start the s
 
 ### Discover
 
-Scan the network for Hue bridges using mDNS and the Meethue discovery service.
+Scan the network for bridges of a given protocol. The protocol name is required since each protocol uses different discovery mechanisms.
 
 ```bash
-artnet-bridge config discover
+artnet-bridge config discover hue
 ```
 
 Output:
@@ -46,24 +46,28 @@ Discovering Hue bridges...
   Studio Bridge at 192.168.1.55
 ```
 
+Supported protocols: `hue`
+
 ### Pair
 
-Pair with a Hue bridge. Press the link button on the bridge before running.
+Pair with a bridge. The protocol name and host address are required. For Hue, press the link button on the bridge before running.
 
 ```bash
-artnet-bridge config pair 192.168.1.42
+artnet-bridge config pair hue 192.168.1.42
 ```
 
 Output on success:
 
 ```
-Pairing with 192.168.1.42... Press the link button on your Hue bridge.
+Pairing with Hue bridge at 192.168.1.42... Press the link button now.
 Pairing successful!
-  Username: abc123...
-Credentials stored. Add a bridge to your config to use them.
+Bridge 'hue-192-168-1-42' added to config.
+Configure universe and channel mappings to start using it.
 ```
 
-The returned credentials (`username` and `clientkey`) are used in the bridge config's `connection` field. See [Configuration](configuration.md).
+The bridge is automatically saved to the config file with default settings. You still need to configure the ArtNet universe and DMX channel mappings. See [Configuration](configuration.md).
+
+Supported protocols: `hue`
 
 ## Examples
 
@@ -76,8 +80,8 @@ artnet-bridge --config /etc/artnet-bridge/prod.json --no-web
 Discover, pair, then run:
 
 ```bash
-artnet-bridge config discover
-artnet-bridge config pair 192.168.1.42
-# Edit ~/.artnet-bridge/config.json to add bridge and mappings
+artnet-bridge config discover hue
+artnet-bridge config pair hue 192.168.1.42
+# Edit ~/.artnet-bridge/config.json to configure universe and channel mappings
 artnet-bridge
 ```

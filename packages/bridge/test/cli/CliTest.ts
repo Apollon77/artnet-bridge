@@ -26,23 +26,30 @@ describe("parseArgs", () => {
     assert.equal(result.noWeb, true);
   });
 
-  it("parses config discover command", () => {
-    const result = parseArgs(["config", "discover"]);
+  it("parses config discover command with protocol", () => {
+    const result = parseArgs(["config", "discover", "hue"]);
     assert.equal(result.command, "config");
-    assert.deepEqual(result.commandArgs, ["discover"]);
+    assert.deepEqual(result.commandArgs, ["discover", "hue"]);
   });
 
-  it("parses config pair command with host argument", () => {
-    const result = parseArgs(["config", "pair", "192.168.1.10"]);
+  it("parses config pair command with protocol and host", () => {
+    const result = parseArgs(["config", "pair", "hue", "192.168.1.10"]);
     assert.equal(result.command, "config");
-    assert.deepEqual(result.commandArgs, ["pair", "192.168.1.10"]);
+    assert.deepEqual(result.commandArgs, ["pair", "hue", "192.168.1.10"]);
   });
 
   it("combines flags and commands", () => {
-    const result = parseArgs(["--config", "/tmp/cfg.json", "--no-web", "config", "discover"]);
+    const result = parseArgs([
+      "--config",
+      "/tmp/cfg.json",
+      "--no-web",
+      "config",
+      "discover",
+      "hue",
+    ]);
     assert.equal(result.configPath, "/tmp/cfg.json");
     assert.equal(result.noWeb, true);
     assert.equal(result.command, "config");
-    assert.deepEqual(result.commandArgs, ["discover"]);
+    assert.deepEqual(result.commandArgs, ["discover", "hue"]);
   });
 });
