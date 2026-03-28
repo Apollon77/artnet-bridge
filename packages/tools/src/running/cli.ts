@@ -24,79 +24,79 @@ import { executeNode } from "./execute.js";
  * this by setting the environment variable ARTNET_DIRECT_EXEC.
  */
 export async function main(argv = process.argv) {
-    let directExec = !!process.env.ARTNET_DIRECT_EXEC;
+  let directExec = !!process.env.ARTNET_DIRECT_EXEC;
 
-    // Drop node and artnet-run
-    argv = argv.slice(2);
+  // Drop node and artnet-run
+  argv = argv.slice(2);
 
-    const nodeArgv = Array<string>();
+  const nodeArgv = Array<string>();
 
-    // Process arguments to artnet-run itself (very simple as of yet so just processing manually)
-    while (argv[0][0] === "-") {
-        const option = argv.shift()!;
+  // Process arguments to artnet-run itself (very simple as of yet so just processing manually)
+  while (argv[0][0] === "-") {
+    const option = argv.shift()!;
 
-        switch (option) {
-            case "--clear":
-                console.clear();
-                break;
+    switch (option) {
+      case "--clear":
+        console.clear();
+        break;
 
-            case "--direct":
-                directExec = true;
-                break;
+      case "--direct":
+        directExec = true;
+        break;
 
-            case "--help":
-                stdout.write(
-                    "Usage: artnet-run [--clear] [--direct] [-<NODE_OPT>]... <SCRIPT> [ARG]...\nRun a Node.js script with source map support and automatic transpilation of TypeScript.",
-                );
-                return;
-
-            default:
-                // Any option we don't recognize we pass to node
-                nodeArgv.push(option);
-                break;
-        }
-    }
-
-    // Extract script name.  argv is then the script's args
-    let script = argv.shift();
-
-    if (script === undefined || script === "") {
-        console.error("Error: Script name required");
-        exit(1);
-    }
-
-    script = await realpath(resolve(script));
-    const dir = dirname(script);
-
-    const { format, pkg } = await ensureCompiled(dir);
-
-    // Determine the actual script to run
-    if (format !== "none") {
-        script = pkg.resolve(
-            pkg
-                .relative(script)
-                .replace(/\.ts$/, ".js")
-                .replace(/^src[\\/]/, `dist/${format}/`),
+      case "--help":
+        stdout.write(
+          "Usage: artnet-run [--clear] [--direct] [-<NODE_OPT>]... <SCRIPT> [ARG]...\nRun a Node.js script with source map support and automatic transpilation of TypeScript.",
         );
-    }
+        return;
 
-    if (!existsSync(script)) {
-        console.error(`Error: File not found: ${script}`);
-        exit(2);
+      default:
+        // Any option we don't recognize we pass to node
+        nodeArgv.push(option);
+        break;
     }
+  }
 
-    // If we run in the same process we cannot enable source maps so default mode is to fork.  However for development
-    // purposes it can be useful to avoid the intermediary process.  In this case you can set "--enable-source-maps"
-    // manually then set ARTNET_DIRECT_EXEC
-    if (directExec) {
-        // This will not transpile properly to commonjs but we only use this module from ESM so that's OK
-        await import(script);
-    } else {
-        // Our behavior in response to SIGINT should mirror the child process's.  So ignore the signal locally, only
-        // quitting once the child process does
-        process.on("SIGINT", () => {});
-        process.on("SIGTERM", () => {});
+  // Extract script name.  argv is then the script's args
+  let script = argv.shift();
 
-        process.exitCode = await executeNode(script, argv, nodeArgv);
-    }
+  if (script === undefined || script === "") {
+    console.error("Error: Script name required");
+    exit(1);
+  }
+
+  script = await realpath(resolve(script));
+  const dir = dirname(script);
+
+  const { format, pkg } = await ensureCompiled(dir);
+
+  // Determine the actual script to run
+  if (format !== "none") {
+    script = pkg.resolve(
+      pkg
+        .relative(script)
+        .replace(/\.ts$/, ".js")
+        .replace(/^src[\\/]/, `dist/${format}/`),
+    );
+  }
+
+  if (!existsSync(script)) {
+    console.error(`Error: File not found: ${script}`);
+    exit(2);
+  }
+
+  // If we run in the same process we cannot enable source maps so default mode is to fork.  However for development
+  // purposes it can be useful to avoid the intermediary process.  In this case you can set "--enable-source-maps"
+  // manually then set ARTNET_DIRECT_EXEC
+  if (directExec) {
+    // This will not transpile properly to commonjs but we only use this module from ESM so that's OK
+    await import(script);
+  } else {
+    // Our behavior in response to SIGINT should mirror the child process's.  So ignore the signal locally, only
+    // quitting once the child process does
+    process.on("SIGINT", () => {});
+    process.on("SIGTERM", () => {});
+
+    process.exitCode = await executeNode(script, argv, nodeArgv);
+  }
 }

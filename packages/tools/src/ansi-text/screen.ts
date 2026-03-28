@@ -5,14 +5,14 @@
  */
 
 export namespace screen {
-    export namespace erase {
-        // Erase to end of line
-        export const toEol = "\x1b[K";
+  export namespace erase {
+    // Erase to end of line
+    export const toEol = "\x1b[K";
 
-        // Move to start of line and erase
-        export const line = `\r${toEol}`;
-    }
+    // Move to start of line and erase
+    export const line = `\r${toEol}`;
+  }
 
-    // Clear all lines
-    export const clear = "\x1b[K";
+  // Clear all lines
+  export const clear = "\x1b[K";
 }

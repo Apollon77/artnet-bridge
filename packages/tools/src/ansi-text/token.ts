@@ -10,59 +10,59 @@ import { Style } from "./style.js";
  * An individual lexical token in a Unicode string with ANSI escape codes.
  */
 export type Token =
-    | NonbreakingToken
-    | BreakingToken
-    | StyleToken
-    | NewlineToken
-    | CarriageReturnToken
-    | TabToken
-    | AnsiToken;
+  | NonbreakingToken
+  | BreakingToken
+  | StyleToken
+  | NewlineToken
+  | CarriageReturnToken
+  | TabToken
+  | AnsiToken;
 
 /**
  * Text sequence that is not whitespace or a control sequence.
  */
 export interface NonbreakingToken {
-    kind: "nonbreaking";
-    str: string;
-    width: number;
+  kind: "nonbreaking";
+  str: string;
+  width: number;
 }
 
 /**
  * Non-tab non-newline whitespace sequence.
  */
 export interface BreakingToken {
-    kind: "breaking";
-    str: string;
-    width: number;
+  kind: "breaking";
+  str: string;
+  width: number;
 }
 
 /**
  * A text styling sequence.
  */
 export interface StyleToken {
-    kind: "style";
-    style: Style;
+  kind: "style";
+  style: Style;
 }
 
 /**
  * Newline character.
  */
 export interface NewlineToken {
-    kind: "newline";
+  kind: "newline";
 }
 
 /**
  * Carriage return character.
  */
 export interface CarriageReturnToken {
-    kind: "carriage-return";
+  kind: "carriage-return";
 }
 
 /**
  * Tab character.
  */
 export interface TabToken {
-    kind: "tab";
+  kind: "tab";
 }
 
 /**
@@ -70,7 +70,7 @@ export interface TabToken {
  * otherwise we ignore.
  */
 export interface AnsiToken {
-    kind: "ansi";
-    sequence: string;
-    newColumn?: number;
+  kind: "ansi";
+  sequence: string;
+  newColumn?: number;
 }

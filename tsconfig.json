@@ -1,10 +1,14 @@
 {
     "files": [],
     "references": [
-        { "path": "packages/tools" },
-        { "path": "packages/artnet" },
-        { "path": "packages/protocol" },
-        { "path": "packages/protocol-hue" },
-        { "path": "packages/bridge" }
+        {
+            "path": "packages/tools"
+        },
+        {
+            "path": "packages/artnet"
+        },
+        {
+            "path": "packages/protocol"
+        }
     ]
 }

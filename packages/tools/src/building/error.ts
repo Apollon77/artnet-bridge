@@ -5,25 +5,25 @@
  */
 
 export class InternalBuildError extends Error {
-    constructor(message: string) {
-        super(message);
-    }
+  constructor(message: string) {
+    super(message);
+  }
 }
 
 export class BuildError extends Error {
-    constructor(readonly diagnostics?: string) {
-        super();
-    }
+  constructor(readonly diagnostics?: string) {
+    super();
+  }
 
-    override get stack() {
-        return this.diagnostics ?? super.stack;
-    }
+  override get stack() {
+    return this.diagnostics ?? super.stack;
+  }
 
-    override toString() {
-        return this.diagnostics ?? "Build error";
-    }
+  override toString() {
+    return this.diagnostics ?? "Build error";
+  }
 
-    inspect() {
-        return this.toString();
-    }
+  inspect() {
+    return this.toString();
+  }
 }
