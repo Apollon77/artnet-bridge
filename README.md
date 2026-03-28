@@ -14,14 +14,15 @@ Currently supports **Philips Hue** with both realtime entertainment streaming an
 
 ## Installation
 
-Requires **Node.js >= 22.13.0**.
+Requires a LTS version of Node.js, minimum **Node.js >= 22.13.0**.
 
 ```bash
-git clone https://github.com/Apollon77/artnet-bridge.git
-cd artnet-bridge
-npm install
-npm run build
+npm install -g artnet-bridge
 ```
+
+After installation, the `artnet-bridge` command is available globally.
+
+> **Development setup:** If you want to build from source instead, see the [Development](#development) section below.
 
 ## Getting Started
 
@@ -30,7 +31,7 @@ npm run build
 Find Hue bridges on your local network:
 
 ```bash
-npx artnet-bridge config discover
+artnet-bridge config discover
 ```
 
 Output:
@@ -44,7 +45,7 @@ Discovering Hue bridges...
 Press the **link button** on your Hue bridge, then within 30 seconds run:
 
 ```bash
-npx artnet-bridge config pair 192.168.1.42
+artnet-bridge config pair 192.168.1.42
 ```
 
 This creates an API user on the bridge and saves the credentials to your config file at `~/.artnet-bridge/config.json`. The bridge is added with a default entry — you will configure the DMX mapping next.
@@ -128,7 +129,7 @@ All other lights on the bridge are controlled via the standard REST API with rat
 ### 5. Start the server
 
 ```bash
-npx artnet-bridge
+artnet-bridge
 ```
 
 Output:
@@ -174,12 +175,12 @@ ArtNet Bridge enforces these limits automatically. You can configure lower limit
 ## CLI Reference
 
 ```bash
-npx artnet-bridge                        # Start the server
-npx artnet-bridge --config /path/to/config.json   # Custom config path
-npx artnet-bridge --port 9090            # Custom web UI port
-npx artnet-bridge --no-web               # Start without web UI
-npx artnet-bridge config discover        # Find Hue bridges on network
-npx artnet-bridge config pair <host>     # Pair with a Hue bridge
+artnet-bridge                        # Start the server
+artnet-bridge --config /path/to/config.json   # Custom config path
+artnet-bridge --port 9090            # Custom web UI port
+artnet-bridge --no-web               # Start without web UI
+artnet-bridge config discover        # Find Hue bridges on network
+artnet-bridge config pair <host>     # Pair with a Hue bridge
 ```
 
 See [CLI documentation](docs/cli.md) for full details.
@@ -211,8 +212,27 @@ packages/
 
 ## Development
 
+To build and run from source:
+
 ```bash
-npm run build          # Build all packages
+git clone https://github.com/Apollon77/artnet-bridge.git
+cd artnet-bridge
+npm install
+npm run build
+```
+
+Run the server from the source checkout:
+
+```bash
+npm run server                              # Start the bridge
+npm run server -- --port 9090               # Custom web UI port
+npm run server -- config discover           # Discover bridges
+npm run server -- config pair 192.168.1.42  # Pair with a bridge
+```
+
+Other development commands:
+
+```bash
 npm run build-clean    # Clean + build
 npm test               # Run tests
 npm run lint           # Lint with oxlint
