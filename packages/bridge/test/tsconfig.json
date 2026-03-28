@@ -1,0 +1,26 @@
+{
+    "extends": "../../tools/tsc/tsconfig.test.json",
+    "compilerOptions": {
+        "types": [
+            "node",
+            "mocha"
+        ]
+    },
+    "references": [
+        {
+            "path": "../../artnet/src"
+        },
+        {
+            "path": "../../protocol-hue/src"
+        },
+        {
+            "path": "../../protocol/src"
+        },
+        {
+            "path": "../../tools/src"
+        },
+        {
+            "path": "../src"
+        }
+    ]
+}
