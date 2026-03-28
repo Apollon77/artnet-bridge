@@ -27,7 +27,12 @@ export class ConfigManager {
 
     if (!existsSync(this.configPath)) {
       const defaultConfig = structuredClone(DEFAULT_CONFIG);
-      writeFileSync(this.configPath, JSON.stringify(defaultConfig, null, 2) + "\n", "utf-8");
+      this.lock.acquire();
+      try {
+        writeFileSync(this.configPath, JSON.stringify(defaultConfig, null, 2) + "\n", "utf-8");
+      } finally {
+        this.lock.release();
+      }
       return defaultConfig;
     }
 
@@ -44,7 +49,12 @@ export class ConfigManager {
       const backupPath = this.configPath.replace(/\.json$/, ".backup.json");
       copyFileSync(this.configPath, backupPath);
       config = this.migrate(config);
-      writeFileSync(this.configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+      this.lock.acquire();
+      try {
+        writeFileSync(this.configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+      } finally {
+        this.lock.release();
+      }
     }
 
     return config;

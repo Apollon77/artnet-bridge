@@ -60,6 +60,25 @@ export function validateConfig(config: AppConfig): string[] {
     for (const err of mappingErrors) {
       errors.push(`Bridge ${bridge.id}: ${err}`);
     }
+
+    // Validate rate limit overrides
+    if (bridge.rateLimits !== undefined) {
+      if (typeof bridge.rateLimits !== "object" || bridge.rateLimits === null) {
+        errors.push(`Bridge ${bridge.id}: rateLimits must be an object`);
+      } else {
+        for (const [key, value] of Object.entries(bridge.rateLimits)) {
+          if (typeof value !== "number" || !isFinite(value)) {
+            errors.push(`Bridge ${bridge.id}: rateLimits.${key} must be a finite number`);
+          } else if (value <= 0) {
+            errors.push(`Bridge ${bridge.id}: rateLimits.${key} must be a positive number`);
+          } else if (value > 100) {
+            errors.push(
+              `Bridge ${bridge.id}: rateLimits.${key} is ${String(value)}/s which exceeds typical protocol limits — verify this is intentional`,
+            );
+          }
+        }
+      }
+    }
   }
 
   // Validate cross-bridge: no overlapping mappings on same universe

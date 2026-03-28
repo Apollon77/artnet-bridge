@@ -157,7 +157,7 @@ async function main(): Promise<void> {
 // Config subcommands
 // ---------------------------------------------------------------------------
 
-async function handleConfigCommand(args: string[], _configManager: ConfigManager): Promise<void> {
+async function handleConfigCommand(args: string[], configManager: ConfigManager): Promise<void> {
   const subcommand = args[0];
 
   if (subcommand === "discover") {
@@ -185,7 +185,26 @@ async function handleConfigCommand(args: string[], _configManager: ConfigManager
       if (typeof conn.username === "string") {
         console.log("Pairing successful!");
         console.log(`  Username: ${conn.username}`);
-        console.log("Credentials stored. Add a bridge to your config to use them.");
+
+        // Auto-save bridge entry to config
+        const bridgeId = `hue-${host.replace(/\./g, "-")}`;
+        const config = configManager.load();
+
+        if (config.bridges.some((b) => b.id === bridgeId)) {
+          console.log(`Bridge ${bridgeId} already exists in config — skipping auto-add.`);
+        } else {
+          config.bridges.push({
+            id: bridgeId,
+            name: `Hue @ ${host}`,
+            protocol: "hue",
+            connection: result.connection,
+            universe: 0,
+            channelMappings: [],
+          });
+          configManager.save(config);
+          console.log(`Bridge '${bridgeId}' added to config.`);
+          console.log("Configure universe and channel mappings to start using it.");
+        }
       }
     } else {
       console.error(`Pairing failed: ${result.error}`);

@@ -1,15 +1,6 @@
 import * as https from "node:https";
 
 // ---------------------------------------------------------------------------
-// Hue CLIP v2 response envelope
-// ---------------------------------------------------------------------------
-
-interface ClipResponse<T> {
-  errors: Array<{ description: string }>;
-  data: T[];
-}
-
-// ---------------------------------------------------------------------------
 // Resource types (simplified to what we need)
 // ---------------------------------------------------------------------------
 
@@ -121,6 +112,16 @@ function httpsRequest(options: {
     }
     req.end();
   });
+}
+
+// ---------------------------------------------------------------------------
+// Response shape guard
+// ---------------------------------------------------------------------------
+
+function isClipEnvelope(value: unknown): value is { data: unknown[] } {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("data" in value)) return false;
+  return Array.isArray(value.data);
 }
 
 // ---------------------------------------------------------------------------
@@ -256,8 +257,17 @@ export class HueClipClient {
       throw new Error(`Hue API error: ${String(res.statusCode)} ${res.body}`);
     }
 
-    const parsed: ClipResponse<T> = JSON.parse(res.body);
-    return parsed.data;
+    const parsed: unknown = JSON.parse(res.body);
+    if (!isClipEnvelope(parsed)) {
+      throw new Error(
+        `Hue API returned unexpected response for ${resource}: missing or invalid 'data' array`,
+      );
+    }
+    // Serialization boundary: data is validated as an array by isClipEnvelope.
+    // Element shape relies on the Hue CLIP v2 API contract — full runtime
+    // validation of every resource field would be disproportionate here.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return -- API trust boundary
+    return parsed.data as T[];
   }
 
   /** PUT a CLIP v2 resource update. */

@@ -1,8 +1,10 @@
 import type { WebSocket, WebSocketServer } from "ws";
 import type { BridgeOrchestrator } from "../BridgeOrchestrator.js";
 
+const KNOWN_MESSAGE_TYPES = new Set(["subscribe", "unsubscribe"]);
+
 interface WsMessage {
-  type: string;
+  type: "subscribe" | "unsubscribe";
   bridgeId?: string;
 }
 
@@ -62,6 +64,15 @@ export class WebSocketHandler {
 
   private pushUpdates(): void {
     const status = this.orchestrator.getStatus();
+
+    // Send global ArtNet status to ALL connected clients
+    const artnetPayload = JSON.stringify({ type: "artnet", data: status.artnet });
+    for (const ws of this.wss.clients) {
+      if (ws.readyState !== 1) continue; // 1 = OPEN
+      ws.send(artnetPayload);
+    }
+
+    // Send per-bridge status to subscribers
     for (const [ws, bridgeIds] of this.subscriptions) {
       if (bridgeIds.size === 0) continue;
       if (ws.readyState !== 1) continue; // 1 = OPEN
@@ -84,10 +95,12 @@ function parseWsMessage(raw: string): WsMessage | undefined {
   }
   if (!isRecord(parsed)) return undefined;
   if (typeof parsed["type"] !== "string") return undefined;
+  if (!KNOWN_MESSAGE_TYPES.has(parsed["type"])) return undefined;
 
-  const result: WsMessage = { type: parsed["type"] };
+  const type = parsed["type"] as "subscribe" | "unsubscribe";
+  const result: WsMessage = { type };
 
-  if (typeof parsed["bridgeId"] === "string") {
+  if (typeof parsed["bridgeId"] === "string" && parsed["bridgeId"].length > 0) {
     result.bridgeId = parsed["bridgeId"];
   }
 

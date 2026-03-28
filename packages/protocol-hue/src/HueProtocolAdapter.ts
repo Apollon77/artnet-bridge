@@ -250,79 +250,106 @@ export class HueProtocolAdapter implements ProtocolAdapter {
   // -----------------------------------------------------------------------
 
   async connect(): Promise<void> {
-    for (const bridgeConfig of this.config.bridges) {
-      const client = this.createClipClient(
-        bridgeConfig.connection.host,
-        bridgeConfig.connection.username,
-      );
-
-      const state: BridgeState = {
-        config: bridgeConfig,
-        client,
-        dtlsStream: null,
-        entities: [],
-        entityToChannel: new Map(),
-        entertainmentLightIds: new Set(),
-        entertainmentConfig: null,
-        connected: false,
-        streaming: false,
-        lastUpdate: 0,
-        rateLimitBackoffUntil: 0,
-        networkRetryTimer: null,
-        entertainmentRetryTimer: null,
-      };
-
-      // Fetch all resources
-      const [lights, rooms, zones, groupedLights, scenes, entertainmentConfigs] = await Promise.all(
-        [
-          client.getLights(),
-          client.getRooms(),
-          client.getZones(),
-          client.getGroupedLights(),
-          client.getScenes(),
-          client.getEntertainmentConfigurations(),
-        ],
-      );
-
-      // Find the entertainment config if one is specified
-      let activeEntConfig: HueEntertainmentConfiguration | null = null;
-      if (bridgeConfig.entertainmentConfigId) {
-        const found = entertainmentConfigs.find(
-          (ec) => ec.id === bridgeConfig.entertainmentConfigId,
+    const connectedIds: string[] = [];
+    try {
+      for (const bridgeConfig of this.config.bridges) {
+        const client = this.createClipClient(
+          bridgeConfig.connection.host,
+          bridgeConfig.connection.username,
         );
-        if (found) {
-          activeEntConfig = found;
-          state.entertainmentConfig = found;
 
-          // Collect light IDs that are members of the entertainment area
-          for (const channel of found.channels) {
-            for (const member of channel.members) {
-              state.entertainmentLightIds.add(member.service.rid);
+        const state: BridgeState = {
+          config: bridgeConfig,
+          client,
+          dtlsStream: null,
+          entities: [],
+          entityToChannel: new Map(),
+          entertainmentLightIds: new Set(),
+          entertainmentConfig: null,
+          connected: false,
+          streaming: false,
+          lastUpdate: 0,
+          rateLimitBackoffUntil: 0,
+          networkRetryTimer: null,
+          entertainmentRetryTimer: null,
+        };
+
+        // Fetch all resources
+        const [lights, rooms, zones, groupedLights, scenes, entertainmentConfigs] =
+          await Promise.all([
+            client.getLights(),
+            client.getRooms(),
+            client.getZones(),
+            client.getGroupedLights(),
+            client.getScenes(),
+            client.getEntertainmentConfigurations(),
+          ]);
+
+        // Find the entertainment config if one is specified
+        let activeEntConfig: HueEntertainmentConfiguration | null = null;
+        if (bridgeConfig.entertainmentConfigId) {
+          const found = entertainmentConfigs.find(
+            (ec) => ec.id === bridgeConfig.entertainmentConfigId,
+          );
+          if (found) {
+            activeEntConfig = found;
+            state.entertainmentConfig = found;
+
+            // Collect light IDs that are members of the entertainment area
+            for (const channel of found.channels) {
+              for (const member of channel.members) {
+                state.entertainmentLightIds.add(member.service.rid);
+              }
             }
           }
         }
+
+        // Build entity list
+        state.entities = this.buildEntities(
+          bridgeConfig.id,
+          lights,
+          rooms,
+          zones,
+          groupedLights,
+          scenes,
+          activeEntConfig,
+          state.entertainmentLightIds,
+          state.entityToChannel,
+        );
+
+        // Start entertainment streaming if configured
+        if (activeEntConfig) {
+          await this.startEntertainmentStreaming(state, client, bridgeConfig, activeEntConfig);
+        }
+
+        state.connected = true;
+        this.bridges.set(bridgeConfig.id, state);
+        connectedIds.push(bridgeConfig.id);
       }
-
-      // Build entity list
-      state.entities = this.buildEntities(
-        bridgeConfig.id,
-        lights,
-        rooms,
-        zones,
-        groupedLights,
-        scenes,
-        activeEntConfig,
-        state.entertainmentLightIds,
-        state.entityToChannel,
-      );
-
-      // Start entertainment streaming if configured
-      if (activeEntConfig) {
-        await this.startEntertainmentStreaming(state, client, bridgeConfig, activeEntConfig);
+    } catch (err: unknown) {
+      // Clean up any bridges that were already connected
+      for (const id of connectedIds) {
+        const state = this.bridges.get(id);
+        if (state) {
+          if (state.dtlsStream) {
+            try {
+              await state.dtlsStream.close();
+            } catch {
+              // Best-effort cleanup
+            }
+          }
+          if (state.entertainmentConfig) {
+            try {
+              await state.client.stopEntertainment(state.entertainmentConfig.id);
+            } catch {
+              // Best-effort cleanup
+            }
+          }
+          state.connected = false;
+        }
+        this.bridges.delete(id);
       }
-
-      state.connected = true;
-      this.bridges.set(bridgeConfig.id, state);
+      throw err;
     }
   }
 
