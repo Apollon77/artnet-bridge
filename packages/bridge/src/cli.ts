@@ -115,19 +115,9 @@ async function main(): Promise<void> {
   // Create orchestrator
   const orchestrator = new BridgeOrchestrator(config, artnet, adapterFactories);
 
-  // Create web server (unless --no-web)
-  let webServer: WebServer | undefined;
   const webPort = args.webPort ?? config.web.port;
   const webEnabled = !args.noWeb && config.web.enabled;
-
-  if (webEnabled) {
-    webServer = new WebServer({
-      port: webPort,
-      orchestrator,
-      configManager,
-      adapters: [],
-    });
-  }
+  let webServer: WebServer | undefined;
 
   // Graceful shutdown
   const shutdown = async (): Promise<void> => {
@@ -146,7 +136,14 @@ async function main(): Promise<void> {
       `ArtNet Bridge started (listening on ${config.artnet.bindAddress}:${config.artnet.port})`,
     );
 
-    if (webServer) {
+    // Create web server after orchestrator.start() so adapters are available
+    if (webEnabled) {
+      webServer = new WebServer({
+        port: webPort,
+        orchestrator,
+        configManager,
+        adapters: orchestrator.getAdapters(),
+      });
       await webServer.start();
       console.log(`Web UI available at http://localhost:${webPort}`);
     }

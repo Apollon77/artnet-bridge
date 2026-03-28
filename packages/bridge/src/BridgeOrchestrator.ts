@@ -43,6 +43,7 @@ export class BridgeOrchestrator {
   private adapters: ProtocolAdapter[] = [];
   private adapterByBridgeId = new Map<string, ProtocolAdapter>();
   private protocolBridges: ProtocolBridge[] = [];
+  private entityIndex = new Map<string, Entity>();
   private dmxMapper?: DmxMapper;
   private realtimeSchedulers = new Map<string, RealtimeScheduler>();
   private limitedSchedulers = new Map<string, Map<string, LimitedScheduler>>();
@@ -79,11 +80,14 @@ export class BridgeOrchestrator {
       this.adapters.push(adapter);
     }
 
-    // 2. Get protocol bridges and entities, build adapter lookup
+    // 2. Get protocol bridges and entities, build adapter lookup + entity index
     for (const adapter of this.adapters) {
       const bridges = await adapter.getBridges();
       for (const bridge of bridges) {
         this.adapterByBridgeId.set(bridge.id, adapter);
+        for (const entity of bridge.entities) {
+          this.entityIndex.set(`${bridge.id}:${entity.id}`, entity);
+        }
       }
       this.protocolBridges.push(...bridges);
     }
@@ -130,9 +134,14 @@ export class BridgeOrchestrator {
     this.adapters = [];
     this.adapterByBridgeId.clear();
     this.protocolBridges = [];
+    this.entityIndex.clear();
     this.dmxMapper = undefined;
     this.realtimeSchedulers.clear();
     this.limitedSchedulers.clear();
+  }
+
+  getAdapters(): ProtocolAdapter[] {
+    return this.adapters;
   }
 
   getStatus(): RuntimeStatus {
@@ -297,7 +306,6 @@ export class BridgeOrchestrator {
   }
 
   private findEntity(bridgeId: string, entityId: string): Entity | undefined {
-    const bridge = this.protocolBridges.find((b) => b.id === bridgeId);
-    return bridge?.entities.find((e) => e.id === entityId);
+    return this.entityIndex.get(`${bridgeId}:${entityId}`);
   }
 }

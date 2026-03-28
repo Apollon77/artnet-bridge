@@ -531,11 +531,6 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     }
 
     // 3. Groups (rooms + zones)
-    const groupMap = new Map<string, HueGroupedLight>();
-    for (const gl of groupedLights) {
-      groupMap.set(gl.owner.rid, gl);
-    }
-
     const buildGroupEntity = (group: HueRoom | HueZone, groupType: string): void => {
       const groupedLight = group.services.find((s) => s.rtype === "grouped_light");
       if (!groupedLight) {

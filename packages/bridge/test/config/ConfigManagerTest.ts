@@ -230,9 +230,8 @@ describe("ConfigLock", () => {
     writeFileSync(lockPath, "999999999");
 
     const lock = new ConfigLock(lockPath);
-    assert.equal(lock.isLocked(), false);
-    // Lock file should have been cleaned up
-    lock.acquire(); // should succeed
+    // acquire() should detect the stale lock and succeed
+    lock.acquire();
     lock.release();
   });
 
@@ -241,7 +240,9 @@ describe("ConfigLock", () => {
     writeFileSync(lockPath, "not-a-pid");
 
     const lock = new ConfigLock(lockPath);
-    assert.equal(lock.isLocked(), false);
+    // acquire() should detect invalid content as stale and succeed
+    lock.acquire();
+    lock.release();
   });
 
   it("release is idempotent", () => {

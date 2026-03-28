@@ -64,6 +64,7 @@ export class WebSocketHandler {
     const status = this.orchestrator.getStatus();
     for (const [ws, bridgeIds] of this.subscriptions) {
       if (bridgeIds.size === 0) continue;
+      if (ws.readyState !== 1) continue; // 1 = OPEN
       for (const bridgeId of bridgeIds) {
         const bridgeStatus = status.bridges[bridgeId];
         if (bridgeStatus) {
