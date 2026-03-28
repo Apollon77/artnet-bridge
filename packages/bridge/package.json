@@ -10,7 +10,8 @@
     "scripts": {
         "clean": "artnet-build clean",
         "build": "artnet-build",
-        "build-clean": "artnet-build --clean"
+        "build-clean": "artnet-build --clean",
+        "bundle": "node scripts/copy-public.js"
     },
     "engines": { "node": ">=22.13.0" },
     "repository": { "type": "git", "url": "git+https://github.com/Apollon77/artnet-bridge.git" },

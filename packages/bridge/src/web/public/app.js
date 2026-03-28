@@ -1,0 +1,673 @@
+// @ts-nocheck
+/* eslint-disable */
+
+const $ = (sel) => document.querySelector(sel);
+
+/** Currently loaded config from /api/config */
+let config = null;
+
+/** Active WebSocket connections per bridge detail panel */
+const wsConnections = new Map();
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+}
+
+async function api(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(json.error || json.errors?.join(", ") || `${method} ${url} failed`);
+  }
+  return json;
+}
+
+function toast(el, kind, msg) {
+  el.textContent = "";
+  const div = document.createElement("div");
+  div.className = "toast " + (kind === "ok" ? "ok" : "err");
+  div.textContent = msg;
+  el.appendChild(div);
+}
+
+function fmtAgo(ts) {
+  if (!ts) return "never";
+  const ms = Date.now() - ts;
+  if (ms < 1000) return ms + "ms ago";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return s + "s ago";
+  const m = Math.round(s / 60);
+  return m + "m ago";
+}
+
+/** Create an element with className and textContent */
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+/** Create a span.badge */
+function badge(text, cls) {
+  const span = document.createElement("span");
+  span.className = "badge " + (cls || "");
+  span.textContent = text;
+  return span;
+}
+
+/** Create a span.pill */
+function pill(text) {
+  const span = document.createElement("span");
+  span.className = "pill";
+  span.textContent = text;
+  return span;
+}
+
+/** Create a button */
+function btn(text, cls, handler) {
+  const button = document.createElement("button");
+  button.className = "btn " + (cls || "");
+  button.textContent = text;
+  if (handler) button.addEventListener("click", handler);
+  return button;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+
+window.addEventListener("DOMContentLoaded", async () => {
+  $("#btnConfig").addEventListener("click", toggleConfigPanel);
+  $("#btnRefresh").addEventListener("click", refresh);
+  $("#btnDiscover").addEventListener("click", discover);
+  $("#btnPair").addEventListener("click", pair);
+  $("#btnSaveConfig").addEventListener("click", saveConfig);
+
+  await refresh();
+  startStatusPolling();
+});
+
+async function refresh() {
+  try {
+    config = await api("GET", "/api/config");
+    renderBridgeCards();
+    renderConfigPanel();
+    updateGlobalStatus(true);
+  } catch {
+    updateGlobalStatus(false);
+  }
+}
+
+// ── Global status indicator ──────────────────────────────────────────────
+
+function updateGlobalStatus(connected) {
+  const dot = $("#statusDot");
+  const label = $("#statusLabel");
+  if (connected) {
+    dot.className = "dot connected";
+    label.textContent = "Connected";
+  } else {
+    dot.className = "dot disconnected";
+    label.textContent = "Disconnected";
+  }
+}
+
+// ── Bridge cards (compact view) ──────────────────────────────────────────
+
+async function renderBridgeCards() {
+  const root = $("#bridges");
+
+  if (!config || !config.bridges.length) {
+    root.textContent = "";
+    root.appendChild(el("div", "muted", "No bridges configured. Open Config to add one."));
+    return;
+  }
+
+  // Fetch runtime status for connection indicators
+  let status = null;
+  try {
+    status = await api("GET", "/api/status");
+  } catch {
+    // Runtime may not be active
+  }
+
+  root.textContent = "";
+
+  for (const bridge of config.bridges) {
+    const bs = status?.bridges?.[bridge.id];
+    const connected = bs?.connected ?? false;
+    const streaming = bs?.streaming;
+    const entityCount = bs?.entityCount ?? 0;
+    const realtimeCount = bs?.realtimeCount ?? 0;
+    const limitedCount = bs?.limitedCount ?? 0;
+
+    const card = document.createElement("div");
+    card.className = "bridge-card";
+    card.dataset.bridgeId = bridge.id;
+
+    // Header
+    const header = el("div", "bridge-header");
+    const summary = el("div", "bridge-summary");
+    const dot = el("span", "dot " + (connected ? "connected" : "disconnected"));
+    summary.appendChild(dot);
+    summary.appendChild(el("strong", null, bridge.name || bridge.id));
+    summary.appendChild(pill(bridge.protocol));
+    if (streaming === true) summary.appendChild(pill("streaming"));
+    else if (streaming === false) summary.appendChild(pill("idle"));
+
+    header.appendChild(summary);
+
+    const actions = el("div", "row");
+    if (bridge.protocol === "hue") {
+      const link = document.createElement("a");
+      link.className = "btn small";
+      link.href = "/protocol/hue/";
+      link.target = "_blank";
+      link.textContent = "Hue UI";
+      actions.appendChild(link);
+    }
+    const toggleBtn = btn("Show Details", "small btn-toggle-detail");
+    actions.appendChild(toggleBtn);
+    header.appendChild(actions);
+    card.appendChild(header);
+
+    // Meta
+    const meta = el("div", "bridge-meta",
+      entityCount + " entities (" + realtimeCount + " realtime, " + limitedCount + " limited) \u00b7 Universe " + bridge.universe);
+    card.appendChild(meta);
+
+    // Detail container
+    const detailDiv = el("div", "bridge-detail");
+    detailDiv.id = "detail-" + bridge.id;
+    card.appendChild(detailDiv);
+
+    toggleBtn.addEventListener("click", () => {
+      const isOpen = detailDiv.classList.contains("open");
+      if (isOpen) {
+        closeDetail(bridge.id, detailDiv, toggleBtn);
+      } else {
+        openDetail(bridge.id, detailDiv, toggleBtn);
+      }
+    });
+
+    root.appendChild(card);
+  }
+}
+
+// ── Detail panel (per bridge) ────────────────────────────────────────────
+
+function openDetail(bridgeId, detailDiv, toggleBtn) {
+  detailDiv.classList.add("open");
+  toggleBtn.textContent = "Hide Details";
+
+  detailDiv.textContent = "";
+
+  detailDiv.appendChild(el("div", "muted", "Connecting to live updates..."));
+  detailDiv.appendChild(el("div", "divider"));
+
+  const entitiesContainer = el("div", "muted", "Loading entities...");
+  entitiesContainer.id = "entities-" + bridgeId;
+  detailDiv.appendChild(entitiesContainer);
+
+  detailDiv.appendChild(el("div", "divider"));
+
+  const budgetsContainer = el("div");
+  budgetsContainer.id = "budgets-" + bridgeId;
+  detailDiv.appendChild(budgetsContainer);
+
+  detailDiv.appendChild(el("div", "divider"));
+
+  // Test controls
+  const testSection = document.createElement("div");
+  testSection.appendChild(el("strong", null, "Test controls"));
+  const testRow = el("div", "row");
+  testRow.style.marginTop = "8px";
+
+  const testStatusEl = el("div", "muted");
+  testStatusEl.id = "test-status-" + bridgeId;
+  testStatusEl.style.marginTop = "6px";
+
+  const colors = [
+    ["Red", 255, 0, 0],
+    ["Green", 0, 255, 0],
+    ["Blue", 0, 0, 255],
+    ["Off", 0, 0, 0],
+  ];
+  for (const [label, r, g, b] of colors) {
+    testRow.appendChild(
+      btn(label, "small", async () => {
+        try {
+          await api("POST", "/api/bridges/" + encodeURIComponent(bridgeId) + "/test", { r, g, b });
+          toast(testStatusEl, "ok", "Sent (" + r + ", " + g + ", " + b + ")");
+        } catch (e) {
+          toast(testStatusEl, "err", e.message);
+        }
+      }),
+    );
+  }
+  testSection.appendChild(testRow);
+  testSection.appendChild(testStatusEl);
+  detailDiv.appendChild(testSection);
+
+  // Load entities via REST first
+  loadEntities(bridgeId);
+
+  // Open WebSocket for live status
+  connectWs(bridgeId);
+}
+
+function closeDetail(bridgeId, detailDiv, toggleBtn) {
+  detailDiv.classList.remove("open");
+  toggleBtn.textContent = "Show Details";
+  detailDiv.textContent = "";
+  disconnectWs(bridgeId);
+}
+
+async function loadEntities(bridgeId) {
+  const root = document.getElementById("entities-" + bridgeId);
+  if (!root) return;
+  try {
+    const entities = await api(
+      "GET",
+      "/api/bridges/" + encodeURIComponent(bridgeId) + "/resources",
+    );
+    renderEntities(bridgeId, entities, null);
+  } catch {
+    root.textContent = "Could not load entities.";
+    root.className = "muted";
+  }
+}
+
+function renderEntities(bridgeId, entities, liveData) {
+  const root = document.getElementById("entities-" + bridgeId);
+  if (!root) return;
+
+  root.textContent = "";
+
+  if (!entities || !entities.length) {
+    root.className = "muted";
+    root.textContent = "No entities.";
+    return;
+  }
+
+  root.className = "";
+
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  for (const h of ["Entity", "Type", "Mode", "Color", "Last update"]) {
+    const th = document.createElement("th");
+    th.textContent = h;
+    headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  for (const e of entities) {
+    const tr = document.createElement("tr");
+
+    // Name
+    const tdName = document.createElement("td");
+    tdName.textContent = e.metadata?.name || e.id;
+    tr.appendChild(tdName);
+
+    // Type badge
+    const tdType = document.createElement("td");
+    tdType.appendChild(badge(e.metadata?.type || "unknown", "type"));
+    tr.appendChild(tdType);
+
+    // Mode badge
+    const tdMode = document.createElement("td");
+    const modeClass = e.controlMode === "realtime" ? "realtime" : "limited";
+    tdMode.appendChild(badge(e.controlMode, modeClass));
+    tr.appendChild(tdMode);
+
+    // Color swatch
+    const tdColor = document.createElement("td");
+    const live = liveData?.entities?.[e.id];
+    const rgb = live?.rgb;
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    if (rgb) {
+      swatch.style.background = "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")";
+    }
+    tdColor.appendChild(swatch);
+    const rgbLabel = document.createElement("span");
+    rgbLabel.className = "muted";
+    rgbLabel.textContent = rgb ? rgb[0] + ", " + rgb[1] + ", " + rgb[2] : "--";
+    tdColor.appendChild(rgbLabel);
+    tr.appendChild(tdColor);
+
+    // Last update
+    const tdUpdate = document.createElement("td");
+    tdUpdate.className = "muted";
+    tdUpdate.textContent = live?.lastUpdate ? fmtAgo(live.lastUpdate) : "--";
+    tr.appendChild(tdUpdate);
+
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  root.appendChild(table);
+}
+
+function renderBudgets(bridgeId, rateLimitUsage) {
+  const root = document.getElementById("budgets-" + bridgeId);
+  if (!root || !rateLimitUsage) return;
+
+  const entries = Object.entries(rateLimitUsage);
+  root.textContent = "";
+  if (!entries.length) return;
+
+  root.appendChild(el("strong", null, "Rate limits"));
+
+  for (const [category, { current, max }] of entries) {
+    const pct = max > 0 ? Math.round((current / max) * 100) : 0;
+
+    const wrap = el("div", "budget-bar-wrap");
+    const label = el("div", "budget-bar-label", category + ": " + current + "/" + max + " req/s (" + pct + "%)");
+    wrap.appendChild(label);
+
+    const bar = el("div", "budget-bar");
+    const fill = el("div", "budget-bar-fill");
+    fill.style.width = pct + "%";
+    bar.appendChild(fill);
+    wrap.appendChild(bar);
+
+    root.appendChild(wrap);
+  }
+}
+
+// ── WebSocket per bridge ─────────────────────────────────────────────────
+
+function connectWs(bridgeId) {
+  disconnectWs(bridgeId);
+
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(proto + "//" + location.host + "/ws");
+
+  ws.addEventListener("open", () => {
+    ws.send(JSON.stringify({ type: "subscribe", bridgeId: bridgeId }));
+  });
+
+  ws.addEventListener("message", (event) => {
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (msg.type === "status" && msg.bridgeId === bridgeId && msg.data) {
+      // Update connection dot on bridge card
+      const card = document.querySelector(".bridge-card[data-bridge-id='" + CSS.escape(bridgeId) + "']");
+      if (card) {
+        const dot = card.querySelector(".dot");
+        if (dot) {
+          dot.className = "dot " + (msg.data.connected ? "connected" : "disconnected");
+        }
+      }
+
+      // Update budget bars
+      renderBudgets(bridgeId, msg.data.rateLimitUsage);
+    }
+  });
+
+  ws.addEventListener("close", () => {
+    wsConnections.delete(bridgeId);
+  });
+
+  wsConnections.set(bridgeId, ws);
+}
+
+function disconnectWs(bridgeId) {
+  const ws = wsConnections.get(bridgeId);
+  if (ws) {
+    try {
+      ws.send(JSON.stringify({ type: "unsubscribe", bridgeId: bridgeId }));
+    } catch {
+      // ws may already be closed
+    }
+    ws.close();
+    wsConnections.delete(bridgeId);
+  }
+}
+
+// ── ArtNet status polling ────────────────────────────────────────────────
+
+function startStatusPolling() {
+  const tick = async () => {
+    try {
+      const status = await api("GET", "/api/status");
+      updateGlobalStatus(true);
+      renderArtnetStatus(status.artnet);
+    } catch {
+      updateGlobalStatus(false);
+      renderArtnetStatus(null);
+    }
+  };
+  tick();
+  setInterval(tick, 2000);
+}
+
+function renderArtnetStatus(artnet) {
+  const root = $("#artnetStatus");
+  root.textContent = "";
+
+  if (!artnet) {
+    root.className = "muted";
+    root.textContent = "Runtime not active.";
+    return;
+  }
+
+  root.className = "";
+
+  const stats = el("div", "artnet-stats");
+
+  const addStat = (label, value) => {
+    const span = el("span", "artnet-stat");
+    span.textContent = label + " ";
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    span.appendChild(strong);
+    stats.appendChild(span);
+  };
+
+  addStat("Status:", artnet.running ? "Running" : "Stopped");
+  addStat("Total frames:", String(artnet.frameCount));
+  addStat("Last frame:", fmtAgo(artnet.lastFrameTime));
+
+  const unis = artnet.frameCounts || {};
+  const uniKeys = Object.keys(unis);
+  if (uniKeys.length) {
+    for (const u of uniKeys) {
+      addStat("U" + u + ":", String(unis[u]));
+    }
+  } else {
+    stats.appendChild(el("span", "artnet-stat muted", "No universe data"));
+  }
+
+  root.appendChild(stats);
+}
+
+// ── Config panel ─────────────────────────────────────────────────────────
+
+function toggleConfigPanel() {
+  const panel = $("#configPanel");
+  panel.hidden = !panel.hidden;
+  $("#btnConfig").textContent = panel.hidden ? "Config" : "Close Config";
+}
+
+function renderConfigPanel() {
+  if (!config) return;
+  $("#cfgArtnetBind").value = config.artnet?.bindAddress || "0.0.0.0";
+  $("#cfgArtnetPort").value = config.artnet?.port || 6454;
+  renderBridgeConfigList();
+}
+
+function renderBridgeConfigList() {
+  const root = $("#bridgeConfigs");
+  root.textContent = "";
+
+  if (!config || !config.bridges.length) {
+    root.appendChild(el("div", "muted", "No bridges configured."));
+    return;
+  }
+
+  for (const bridge of config.bridges) {
+    const item = el("div", "item");
+
+    // Title row
+    const titleRow = el("div", "item-title");
+    const titleLeft = document.createElement("div");
+    titleLeft.appendChild(el("strong", null, bridge.name || bridge.id));
+    titleLeft.appendChild(document.createTextNode(" "));
+    titleLeft.appendChild(pill(bridge.protocol));
+    titleLeft.appendChild(document.createTextNode(" "));
+    titleLeft.appendChild(pill("U" + bridge.universe));
+    titleRow.appendChild(titleLeft);
+    item.appendChild(titleRow);
+
+    // Mapping count
+    const meta = el("div", "muted", (bridge.channelMappings?.length || 0) + " channel mappings");
+    meta.style.marginTop = "6px";
+    item.appendChild(meta);
+
+    // Mappings table
+    if (bridge.channelMappings?.length) {
+      const tableWrap = document.createElement("div");
+      tableWrap.style.marginTop = "8px";
+
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      for (const h of ["Entity", "DMX start", "Width"]) {
+        const th = document.createElement("th");
+        th.textContent = h;
+        headRow.appendChild(th);
+      }
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      for (const m of bridge.channelMappings) {
+        const tr = document.createElement("tr");
+
+        const tdEntity = document.createElement("td");
+        tdEntity.appendChild(pill(m.entityId));
+        tr.appendChild(tdEntity);
+
+        const tdStart = document.createElement("td");
+        tdStart.textContent = String(m.dmxStart);
+        tr.appendChild(tdStart);
+
+        const tdWidth = document.createElement("td");
+        tdWidth.textContent = String(m.channelWidth || "--");
+        tr.appendChild(tdWidth);
+
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      item.appendChild(tableWrap);
+    }
+
+    root.appendChild(item);
+  }
+}
+
+// ── Discover ─────────────────────────────────────────────────────────────
+
+async function discover() {
+  const status = $("#discoverStatus");
+  status.textContent = "Searching...";
+  try {
+    const bridges = await api("GET", "/api/bridges/discover");
+    status.textContent = "Found " + bridges.length + ".";
+    renderDiscoverList(bridges);
+  } catch (e) {
+    status.textContent = e.message;
+  }
+}
+
+function renderDiscoverList(items) {
+  const root = $("#discoverList");
+  root.textContent = "";
+
+  if (!items.length) {
+    root.appendChild(el("div", "muted", "No bridges found."));
+    return;
+  }
+  for (const b of items) {
+    const item = el("div", "item");
+    const titleRow = el("div", "item-title");
+
+    const left = document.createElement("div");
+    left.appendChild(el("strong", null, b.name || b.id));
+    left.appendChild(document.createTextNode(" "));
+    left.appendChild(pill(b.host));
+    left.appendChild(document.createTextNode(" "));
+    left.appendChild(pill(b.protocol));
+    titleRow.appendChild(left);
+
+    titleRow.appendChild(
+      btn("Use", "small", () => {
+        $("#pairProtocol").value = b.protocol;
+        $("#pairId").value = b.id;
+        $("#pairHost").value = b.host;
+      }),
+    );
+
+    item.appendChild(titleRow);
+    root.appendChild(item);
+  }
+}
+
+// ── Pair ──────────────────────────────────────────────────────────────────
+
+async function pair() {
+  const protocol = $("#pairProtocol").value.trim();
+  const id = $("#pairId").value.trim();
+  const host = $("#pairHost").value.trim();
+  const status = $("#pairStatus");
+
+  if (!protocol || !id || !host) {
+    status.textContent = "Fill in all fields.";
+    return;
+  }
+  status.textContent = "Pairing...";
+  try {
+    const res = await api("POST", "/api/bridges/pair", { protocol, id, host });
+    if (res.success) {
+      toast(status, "ok", "Paired successfully. Reload config to see it.");
+    } else {
+      toast(status, "err", res.error || "Pairing failed.");
+    }
+  } catch (e) {
+    toast(status, "err", e.message);
+  }
+}
+
+// ── Save config ──────────────────────────────────────────────────────────
+
+async function saveConfig() {
+  const status = $("#saveStatus");
+  try {
+    config.artnet.bindAddress = $("#cfgArtnetBind").value || "0.0.0.0";
+    config.artnet.port = Number($("#cfgArtnetPort").value) || 6454;
+    await api("PUT", "/api/config", config);
+    toast(status, "ok", "Saved.");
+  } catch (e) {
+    toast(status, "err", e.message);
+  }
+}

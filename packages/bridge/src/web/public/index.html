@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ArtNet Bridge</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo">AB</div>
+          <div>
+            <div class="title">ArtNet Bridge</div>
+            <div class="subtitle">
+              <span id="statusDot" class="dot disconnected"></span>
+              <span id="statusLabel">Connecting...</span>
+            </div>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button id="btnConfig" class="btn">Config</button>
+          <button id="btnRefresh" class="btn">Refresh</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section id="bridgeList" class="card">
+          <h2>Bridges</h2>
+          <div id="bridges" class="list">
+            <div class="muted">Loading...</div>
+          </div>
+        </section>
+
+        <!-- Config modal -->
+        <section id="configPanel" class="card" hidden>
+          <h2>Configuration</h2>
+
+          <div class="grid2">
+            <div class="panel">
+              <div class="panel-title">Discover bridges</div>
+              <div class="panel-body">
+                <div class="row">
+                  <button id="btnDiscover" class="btn">Discover</button>
+                  <span id="discoverStatus" class="muted"></span>
+                </div>
+                <div id="discoverList" class="list"></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-title">Pair bridge</div>
+              <div class="panel-body form">
+                <label>
+                  <span>Protocol</span>
+                  <input id="pairProtocol" value="hue" placeholder="hue" />
+                </label>
+                <label>
+                  <span>Bridge ID</span>
+                  <input id="pairId" placeholder="bridge-id" />
+                </label>
+                <label>
+                  <span>Host</span>
+                  <input id="pairHost" placeholder="192.168.1.10" />
+                </label>
+                <button id="btnPair" class="btn primary">Pair</button>
+                <div id="pairStatus" class="muted"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="panel">
+            <div class="panel-title">ArtNet settings</div>
+            <div class="panel-body form">
+              <div class="grid2">
+                <label>
+                  <span>Bind address</span>
+                  <input id="cfgArtnetBind" placeholder="0.0.0.0" />
+                </label>
+                <label>
+                  <span>Port</span>
+                  <input id="cfgArtnetPort" type="number" placeholder="6454" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="panel">
+            <div class="panel-title">Bridge configuration</div>
+            <div class="panel-body">
+              <div id="bridgeConfigs" class="list">
+                <div class="muted">No bridges configured.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top: 14px">
+            <button id="btnSaveConfig" class="btn primary">Save config</button>
+            <span id="saveStatus" class="muted"></span>
+          </div>
+        </section>
+
+        <!-- ArtNet status footer -->
+        <section class="card artnet-footer">
+          <h2>ArtNet</h2>
+          <div id="artnetStatus" class="muted">Waiting for status...</div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

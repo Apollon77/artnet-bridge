@@ -1,5 +1,7 @@
 import express from "express";
 import { createServer, type Server } from "node:http";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import type { ProtocolAdapter } from "@artnet-bridge/protocol";
 import type { BridgeOrchestrator } from "../BridgeOrchestrator.js";
@@ -8,6 +10,8 @@ import { WebSocketHandler } from "./WebSocketHandler.js";
 import { createConfigRoutes } from "./routes/configRoutes.js";
 import { createStatusRoutes } from "./routes/statusRoutes.js";
 import { createBridgeRoutes } from "./routes/bridgeRoutes.js";
+
+const defaultStaticPath = join(dirname(fileURLToPath(import.meta.url)), "public");
 
 export interface WebServerOptions {
   port: number;
@@ -32,9 +36,8 @@ export class WebServer {
     this.app.use("/api", express.json());
 
     // Static file serving
-    if (options.staticPath) {
-      this.app.use(express.static(options.staticPath));
-    }
+    const staticDir = options.staticPath ?? defaultStaticPath;
+    this.app.use(express.static(staticDir));
 
     // REST API routes
     this.app.use("/api/config", createConfigRoutes(options.configManager));
