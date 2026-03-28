@@ -21,7 +21,11 @@ import {
   type HueScene,
   type HueEntertainmentConfiguration,
 } from "./HueClipClient.js";
-import { HueDtlsStream as HueDtlsStreamImpl, type ColorUpdate } from "./HueDtlsStream.js";
+import {
+  HueDtlsStream as HueDtlsStreamImpl,
+  type ColorUpdate,
+  type DtlsStreamCallbacks,
+} from "./HueDtlsStream.js";
 import { discoverBridges as discoverBridgesImpl } from "./HueDiscovery.js";
 import { pairWithBridge as pairWithBridgeImpl } from "./HuePairing.js";
 
@@ -69,6 +73,7 @@ export type CreateDtlsStream = (
   pskIdentity: string,
   clientKey: string,
   entertainmentConfigId: string,
+  callbacks?: DtlsStreamCallbacks,
 ) => HueDtlsStream;
 
 /**
@@ -99,6 +104,12 @@ interface BridgeState {
   connected: boolean;
   streaming: boolean;
   lastUpdate: number;
+  /** When a 429 was received, holds the timestamp until which to back off */
+  rateLimitBackoffUntil: number;
+  /** Timer for periodic network-error retry */
+  networkRetryTimer: ReturnType<typeof setInterval> | null;
+  /** Timer for periodic entertainment claim retry */
+  entertainmentRetryTimer: ReturnType<typeof setInterval> | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -171,6 +182,22 @@ function rgb16ToXyBrightness(
 }
 
 // ---------------------------------------------------------------------------
+// Error classification helpers
+// ---------------------------------------------------------------------------
+
+const NETWORK_ERROR_CODES = [
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "ECONNRESET",
+  "EHOSTUNREACH",
+  "ENOTFOUND",
+];
+
+function isNetworkError(message: string): boolean {
+  return NETWORK_ERROR_CODES.some((code) => message.includes(code));
+}
+
+// ---------------------------------------------------------------------------
 // HueProtocolAdapter
 // ---------------------------------------------------------------------------
 
@@ -204,8 +231,13 @@ export class HueProtocolAdapter implements ProtocolAdapter {
 
     this.createDtlsStream =
       deps?.createDtlsStream ??
-      ((host: string, pskIdentity: string, clientKey: string, entertainmentConfigId: string) =>
-        new HueDtlsStreamImpl(host, pskIdentity, clientKey, entertainmentConfigId));
+      ((
+        host: string,
+        pskIdentity: string,
+        clientKey: string,
+        entertainmentConfigId: string,
+        callbacks?: DtlsStreamCallbacks,
+      ) => new HueDtlsStreamImpl(host, pskIdentity, clientKey, entertainmentConfigId, callbacks));
 
     this.discoverFn = deps?.discoverFn ?? (() => discoverBridgesImpl());
 
@@ -235,6 +267,9 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         connected: false,
         streaming: false,
         lastUpdate: 0,
+        rateLimitBackoffUntil: 0,
+        networkRetryTimer: null,
+        entertainmentRetryTimer: null,
       };
 
       // Fetch all resources
@@ -283,18 +318,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
 
       // Start entertainment streaming if configured
       if (activeEntConfig) {
-        const appId = await client.getApplicationId();
-        await client.startEntertainment(activeEntConfig.id);
-
-        const dtlsStream = this.createDtlsStream(
-          bridgeConfig.connection.host,
-          appId,
-          bridgeConfig.connection.clientkey,
-          activeEntConfig.id,
-        );
-        await dtlsStream.connect();
-        state.dtlsStream = dtlsStream;
-        state.streaming = true;
+        await this.startEntertainmentStreaming(state, client, bridgeConfig, activeEntConfig);
       }
 
       state.connected = true;
@@ -304,6 +328,14 @@ export class HueProtocolAdapter implements ProtocolAdapter {
 
   async disconnect(): Promise<void> {
     for (const [, state] of this.bridges) {
+      if (state.networkRetryTimer !== null) {
+        clearInterval(state.networkRetryTimer);
+        state.networkRetryTimer = null;
+      }
+      if (state.entertainmentRetryTimer !== null) {
+        clearInterval(state.entertainmentRetryTimer);
+        state.entertainmentRetryTimer = null;
+      }
       if (state.dtlsStream) {
         await state.dtlsStream.close();
         state.dtlsStream = null;
@@ -389,53 +421,85 @@ export class HueProtocolAdapter implements ProtocolAdapter {
       return;
     }
 
+    // Skip if bridge is marked disconnected (network retry in progress)
+    if (!state.connected) {
+      return;
+    }
+
+    // Skip if we are still in a 429 backoff window
+    if (Date.now() < state.rateLimitBackoffUntil) {
+      return;
+    }
+
     const entity = state.entities.find((e) => e.id === entityId);
     if (!entity) {
       return;
     }
 
-    switch (entity.category) {
-      case "light": {
-        if (value.type === "rgb") {
-          const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
-          await state.client.setLightState(entityId, {
-            color: { xy: { x, y } },
-            dimming: { brightness: bri },
-          });
-        } else if (value.type === "rgb-dimmable") {
-          const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
-          const brightness = (value.dim / 65535) * 100;
-          await state.client.setLightState(entityId, {
-            color: { xy: { x, y } },
-            dimming: { brightness },
-          });
+    try {
+      switch (entity.category) {
+        case "light": {
+          if (value.type === "rgb") {
+            const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
+            await state.client.setLightState(entityId, {
+              color: { xy: { x, y } },
+              dimming: { brightness: bri },
+            });
+          } else if (value.type === "rgb-dimmable") {
+            const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
+            const brightness = (value.dim / 65535) * 100;
+            await state.client.setLightState(entityId, {
+              color: { xy: { x, y } },
+              dimming: { brightness },
+            });
+          }
+          break;
         }
-        break;
-      }
-      case "group": {
-        if (value.type === "brightness") {
-          const brightness = (value.value / 65535) * 100;
-          await state.client.setGroupedLightState(entityId, {
-            dimming: { brightness },
-          });
-        } else if (value.type === "rgb") {
-          const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
-          await state.client.setGroupedLightState(entityId, {
-            color: { xy: { x, y } },
-            dimming: { brightness: bri },
-          });
+        case "group": {
+          if (value.type === "brightness") {
+            const brightness = (value.value / 65535) * 100;
+            await state.client.setGroupedLightState(entityId, {
+              dimming: { brightness },
+            });
+          } else if (value.type === "rgb") {
+            const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
+            await state.client.setGroupedLightState(entityId, {
+              color: { xy: { x, y } },
+              dimming: { brightness: bri },
+            });
+          }
+          break;
         }
-        break;
-      }
-      case "scene": {
-        if (value.type === "scene-selector") {
-          await state.client.activateScene(value.sceneId);
+        case "scene": {
+          if (value.type === "scene-selector") {
+            await state.client.activateScene(value.sceneId);
+          }
+          break;
         }
-        break;
       }
-    }
 
-    state.lastUpdate = Date.now();
+      state.lastUpdate = Date.now();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      // Handle 429 Too Many Requests — back off for 1 second
+      if (message.includes("429")) {
+        console.warn(`[Hue] Rate limited (429) on bridge ${bridgeId}, backing off 1s`);
+        state.rateLimitBackoffUntil = Date.now() + 1000;
+        return;
+      }
+
+      // Handle network errors — mark bridge disconnected and start periodic retry
+      if (isNetworkError(message)) {
+        console.error(`[Hue] Network error on bridge ${bridgeId}: ${message}`);
+        state.connected = false;
+        this.startNetworkRetry(state, bridgeId);
+        return;
+      }
+
+      // Other HTTP errors (4xx/5xx) — log and skip, don't crash
+      console.warn(`[Hue] API error on bridge ${bridgeId}, entity ${entityId}: ${message}`);
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -470,6 +534,146 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     // Future: register Hue-specific routes under the provided router.
     // For now, this is a no-op placeholder.
     void router;
+  }
+
+  // -----------------------------------------------------------------------
+  // Private — entertainment streaming
+  // -----------------------------------------------------------------------
+
+  private async startEntertainmentStreaming(
+    state: BridgeState,
+    client: HueClipClient,
+    bridgeConfig: HueBridgeConfig,
+    entertainmentConfig: HueEntertainmentConfiguration,
+  ): Promise<void> {
+    try {
+      const appId = await client.getApplicationId();
+      await client.startEntertainment(entertainmentConfig.id);
+
+      const dtlsCallbacks: DtlsStreamCallbacks = {
+        onDisconnected: () => {
+          console.warn(`[Hue] DTLS disconnected on bridge ${bridgeConfig.id}`);
+          state.streaming = false;
+        },
+        onReconnecting: async (attempt: number) => {
+          console.info(
+            `[Hue] DTLS reconnect attempt ${String(attempt)} on bridge ${bridgeConfig.id}`,
+          );
+          // Re-activate entertainment config via REST before DTLS can reconnect
+          await client.startEntertainment(entertainmentConfig.id);
+        },
+      };
+
+      const dtlsStream = this.createDtlsStream(
+        bridgeConfig.connection.host,
+        appId,
+        bridgeConfig.connection.clientkey,
+        entertainmentConfig.id,
+        dtlsCallbacks,
+      );
+      await dtlsStream.connect();
+      state.dtlsStream = dtlsStream;
+      state.streaming = true;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      // Entertainment area already claimed by another client
+      if (message.includes("already") || message.includes("claimed") || message.includes("busy")) {
+        console.warn(
+          `[Hue] Entertainment config ${entertainmentConfig.id} already claimed: ${message}`,
+        );
+        state.streaming = false;
+
+        // Start a periodic retry every 30 seconds
+        if (state.entertainmentRetryTimer === null) {
+          state.entertainmentRetryTimer = setInterval(() => {
+            void this.retryEntertainmentStart(state, client, bridgeConfig, entertainmentConfig);
+          }, 30_000);
+        }
+        return;
+      }
+
+      // For other errors, also don't crash — log and continue without streaming
+      console.error(
+        `[Hue] Failed to start entertainment streaming on ${bridgeConfig.id}: ${message}`,
+      );
+      state.streaming = false;
+    }
+  }
+
+  private async retryEntertainmentStart(
+    state: BridgeState,
+    client: HueClipClient,
+    bridgeConfig: HueBridgeConfig,
+    entertainmentConfig: HueEntertainmentConfiguration,
+  ): Promise<void> {
+    try {
+      const appId = await client.getApplicationId();
+      await client.startEntertainment(entertainmentConfig.id);
+
+      const dtlsCallbacks: DtlsStreamCallbacks = {
+        onDisconnected: () => {
+          console.warn(`[Hue] DTLS disconnected on bridge ${bridgeConfig.id}`);
+          state.streaming = false;
+        },
+        onReconnecting: async (attempt: number) => {
+          console.info(
+            `[Hue] DTLS reconnect attempt ${String(attempt)} on bridge ${bridgeConfig.id}`,
+          );
+          await client.startEntertainment(entertainmentConfig.id);
+        },
+      };
+
+      const dtlsStream = this.createDtlsStream(
+        bridgeConfig.connection.host,
+        appId,
+        bridgeConfig.connection.clientkey,
+        entertainmentConfig.id,
+        dtlsCallbacks,
+      );
+      await dtlsStream.connect();
+      state.dtlsStream = dtlsStream;
+      state.streaming = true;
+
+      // Success — clear the retry timer
+      if (state.entertainmentRetryTimer !== null) {
+        clearInterval(state.entertainmentRetryTimer);
+        state.entertainmentRetryTimer = null;
+      }
+      console.info(`[Hue] Entertainment streaming recovered on bridge ${bridgeConfig.id}`);
+    } catch {
+      // Still failing — timer will fire again
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Private — network retry
+  // -----------------------------------------------------------------------
+
+  private startNetworkRetry(state: BridgeState, bridgeId: string): void {
+    if (state.networkRetryTimer !== null) {
+      return; // Already retrying
+    }
+
+    state.networkRetryTimer = setInterval(() => {
+      void this.attemptNetworkRecovery(state, bridgeId);
+    }, 30_000);
+  }
+
+  private async attemptNetworkRecovery(state: BridgeState, bridgeId: string): Promise<void> {
+    try {
+      // Try a lightweight request to see if the bridge is reachable
+      await state.client.getLights();
+      state.connected = true;
+
+      if (state.networkRetryTimer !== null) {
+        clearInterval(state.networkRetryTimer);
+        state.networkRetryTimer = null;
+      }
+      console.info(`[Hue] Bridge ${bridgeId} reconnected`);
+    } catch {
+      // Still unreachable — timer will fire again
+    }
   }
 
   // -----------------------------------------------------------------------

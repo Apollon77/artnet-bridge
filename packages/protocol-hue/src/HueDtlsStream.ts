@@ -104,6 +104,30 @@ export function buildHueStreamPacket(
 }
 
 // ---------------------------------------------------------------------------
+// Reconnection constants
+// ---------------------------------------------------------------------------
+
+const INITIAL_BACKOFF_MS = 1000;
+const MAX_BACKOFF_MS = 30_000;
+const BACKOFF_MULTIPLIER = 2;
+
+// ---------------------------------------------------------------------------
+// Event callback types
+// ---------------------------------------------------------------------------
+
+export interface DtlsStreamCallbacks {
+  /** Called when the DTLS connection drops unexpectedly. */
+  onDisconnected?: () => void;
+  /**
+   * Called before each reconnection attempt. The adapter should re-activate
+   * the entertainment configuration via REST before returning.  If the
+   * callback rejects, the reconnection attempt is skipped (but retried
+   * after the next backoff interval).
+   */
+  onReconnecting?: (attemptNumber: number) => Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
 // HueDtlsStream
 // ---------------------------------------------------------------------------
 
@@ -111,21 +135,37 @@ export function buildHueStreamPacket(
  * Manages a DTLS connection to a Philips Hue bridge for entertainment
  * streaming.  On `connect()`, opens a DTLS 1.2 / PSK session and starts a
  * 50 Hz loop that continuously transmits the current color state.
+ *
+ * If the connection drops, the stream will automatically attempt to
+ * reconnect with exponential backoff (1s, 2s, 4s, … up to 30s).  The
+ * streaming interval keeps running so that values resume sending
+ * immediately upon reconnection.
  */
 export class HueDtlsStream {
   private readonly host: string;
   private readonly pskIdentity: string;
   private readonly clientKey: string;
   private readonly entertainmentConfigId: string;
+  private readonly callbacks: DtlsStreamCallbacks;
 
   private socket: dtls.dtls.Socket | null = null;
   private streamInterval: ReturnType<typeof setInterval> | null = null;
   private _connected = false;
+  private _closed = false;
+  private _reconnecting = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempt = 0;
 
   /** Current per-channel color state, keyed by channel ID */
   private readonly channelColors = new Map<number, [number, number, number]>();
 
-  constructor(host: string, pskIdentity: string, clientKey: string, entertainmentConfigId: string) {
+  constructor(
+    host: string,
+    pskIdentity: string,
+    clientKey: string,
+    entertainmentConfigId: string,
+    callbacks?: DtlsStreamCallbacks,
+  ) {
     if (entertainmentConfigId.length !== CONFIG_ID_SIZE) {
       throw new Error(
         `entertainmentConfigId must be exactly 36 characters, got ${String(entertainmentConfigId.length)}`,
@@ -135,11 +175,17 @@ export class HueDtlsStream {
     this.pskIdentity = pskIdentity;
     this.clientKey = clientKey;
     this.entertainmentConfigId = entertainmentConfigId;
+    this.callbacks = callbacks ?? {};
   }
 
   /** Whether the stream is currently connected and sending. */
   get connected(): boolean {
     return this._connected;
+  }
+
+  /** Whether the stream is currently attempting to reconnect. */
+  get reconnecting(): boolean {
+    return this._reconnecting;
   }
 
   /**
@@ -151,6 +197,61 @@ export class HueDtlsStream {
       return;
     }
 
+    this._closed = false;
+    await this.openSocket();
+
+    // Start the 50 Hz streaming loop (keeps running even when disconnected)
+    if (this.streamInterval === null) {
+      this.streamInterval = setInterval(() => {
+        this.sendCurrentState();
+      }, STREAM_INTERVAL_MS);
+    }
+  }
+
+  /**
+   * Update the color values for one or more channels.
+   * The new values will be picked up by the next streaming tick.
+   */
+  updateValues(updates: ReadonlyArray<ColorUpdate>): void {
+    for (const update of updates) {
+      this.channelColors.set(update.channelId, [update.color[0], update.color[1], update.color[2]]);
+    }
+  }
+
+  /**
+   * Stop streaming and close the DTLS connection permanently.
+   * No reconnection will be attempted after this call.
+   */
+  async close(): Promise<void> {
+    this._closed = true;
+    this._reconnecting = false;
+    this.reconnectAttempt = 0;
+
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.streamInterval !== null) {
+      clearInterval(this.streamInterval);
+      this.streamInterval = null;
+    }
+
+    this._connected = false;
+    const socket = this.socket;
+    if (socket) {
+      this.socket = null;
+      await new Promise<void>((resolve) => {
+        socket.close(() => resolve());
+      });
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Private — socket management
+  // -----------------------------------------------------------------------
+
+  private async openSocket(): Promise<void> {
     const pskBuffer = Buffer.from(this.clientKey, "hex");
 
     const socket = await new Promise<dtls.dtls.Socket>((resolve, reject) => {
@@ -175,47 +276,73 @@ export class HueDtlsStream {
 
     this.socket = socket;
     this._connected = true;
+    this._reconnecting = false;
+    this.reconnectAttempt = 0;
 
     // Handle unexpected close / error while streaming
     socket.on("close", () => {
-      this.stopStreaming();
+      this.handleDisconnect();
     });
     socket.on("error", () => {
-      this.stopStreaming();
+      this.handleDisconnect();
     });
-
-    // Start the 50 Hz streaming loop
-    this.streamInterval = setInterval(() => {
-      this.sendCurrentState();
-    }, STREAM_INTERVAL_MS);
   }
 
-  /**
-   * Update the color values for one or more channels.
-   * The new values will be picked up by the next streaming tick.
-   */
-  updateValues(updates: ReadonlyArray<ColorUpdate>): void {
-    for (const update of updates) {
-      this.channelColors.set(update.channelId, [update.color[0], update.color[1], update.color[2]]);
+  private handleDisconnect(): void {
+    this._connected = false;
+    this.socket = null;
+
+    // Don't reconnect if close() was called intentionally
+    if (this._closed) {
+      return;
     }
+
+    this.callbacks.onDisconnected?.();
+    this.scheduleReconnect();
   }
 
-  /**
-   * Stop streaming and close the DTLS connection.
-   */
-  async close(): Promise<void> {
-    this.stopStreaming();
-    const socket = this.socket;
-    if (socket) {
-      this.socket = null;
-      await new Promise<void>((resolve) => {
-        socket.close(() => resolve());
-      });
+  private scheduleReconnect(): void {
+    if (this._closed || this._reconnecting) {
+      return;
+    }
+
+    this._reconnecting = true;
+    const delay = Math.min(
+      INITIAL_BACKOFF_MS * Math.pow(BACKOFF_MULTIPLIER, this.reconnectAttempt),
+      MAX_BACKOFF_MS,
+    );
+    this.reconnectAttempt++;
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.attemptReconnect();
+    }, delay);
+  }
+
+  private async attemptReconnect(): Promise<void> {
+    if (this._closed) {
+      this._reconnecting = false;
+      return;
+    }
+
+    try {
+      // Notify adapter so it can re-activate entertainment config via REST
+      if (this.callbacks.onReconnecting) {
+        await this.callbacks.onReconnecting(this.reconnectAttempt);
+      }
+
+      await this.openSocket();
+    } catch {
+      // Reconnection failed — try again with increased backoff
+      if (!this._closed) {
+        this._reconnecting = false;
+        this.scheduleReconnect();
+      }
     }
   }
 
   // -----------------------------------------------------------------------
-  // Private helpers
+  // Private — packet sending
   // -----------------------------------------------------------------------
 
   private sendCurrentState(): void {
@@ -230,13 +357,5 @@ export class HueDtlsStream {
 
     const packet = buildHueStreamPacket(this.entertainmentConfigId, updates);
     this.socket.send(packet);
-  }
-
-  private stopStreaming(): void {
-    this._connected = false;
-    if (this.streamInterval !== null) {
-      clearInterval(this.streamInterval);
-      this.streamInterval = null;
-    }
   }
 }

@@ -19,4 +19,4 @@ export type { FetchDiscoveryJson } from "./HueDiscovery.js";
 export { pairWithBridge } from "./HuePairing.js";
 export type { CreateClient } from "./HuePairing.js";
 export { HueDtlsStream, buildHueStreamPacket } from "./HueDtlsStream.js";
-export type { ColorUpdate } from "./HueDtlsStream.js";
+export type { ColorUpdate, DtlsStreamCallbacks } from "./HueDtlsStream.js";
