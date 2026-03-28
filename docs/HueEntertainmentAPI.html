@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+	<script src="//www.lighting.philips.com/assets/scripts/tms_code.js"></script>  
+	<meta charset="utf-8">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="profile" href="http://gmpg.org/xfn/11">
+	<meta name='robots' content='index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' />
+
+		<!-- Meta Tag Manager -->
+		<meta name="PHILIPS.METRICS.DIVISION" content="CP" />
+		<meta name="PHILIPS.METRICS.COUNTRY" content="Global" />
+		<meta name="PHILIPS.METRICS.LANGUAGE" content="En" />
+		<meta name="PHILIPS.METRICS.SECTION" content="hue_developer_program_portal" />
+		<meta name="PHILIPS.METRICS.MICROSITEID" content="UNKNOWN" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="home" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="explore" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="develop" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="support" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="job_vacancies" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="forum" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="my_apps" />
+		<meta name="PHILIPS.METRICS.PAGENAME" content="account" />
+		<!-- / Meta Tag Manager -->
+
+	<!-- This site is optimized with the Yoast SEO plugin v23.5 - https://yoast.com/wordpress/plugins/seo/ -->
+	<title>Hue Entertainment API - Philips Hue Developer Program</title>
+	<link rel="canonical" href="https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/" />
+	<meta property="og:locale" content="en_US" />
+	<meta property="og:type" content="article" />
+	<meta property="og:title" content="Hue Entertainment API - Philips Hue Developer Program" />
+	<meta property="og:description" content="‘Philips Hue Entertainment’ is a major feature for the Philips Hue v2 bridge, Philips color capable lights and the Philips Hue app which strengthens lighting system’s integration into any home entertainment experience. Our goal with Hue Entertainment is to fully immerse Hue users in their music, TV, movies and video games with high-quality, synchronized lighting [&hellip;]" />
+	<meta property="og:url" content="https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/" />
+	<meta property="og:site_name" content="Philips Hue Developer Program" />
+	<meta property="article:modified_time" content="2024-01-23T20:26:29+00:00" />
+	<meta property="og:image" content="https://developers.meethue.com/wp-content/uploads/2018/02/Architecture_overview_entertainment.png" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:site" content="@philipshuedev" />
+	<meta name="twitter:label1" content="Est. reading time" />
+	<meta name="twitter:data1" content="11 minutes" />
+	<script type="application/ld+json" class="yoast-schema-graph">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/","url":"https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/","name":"Hue Entertainment API - Philips Hue Developer Program","isPartOf":{"@id":"https://developers.meethue.com/#website"},"primaryImageOfPage":{"@id":"https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/#primaryimage"},"image":{"@id":"https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/#primaryimage"},"thumbnailUrl":"https://developers.meethue.com/wp-content/uploads/2018/02/Architecture_overview_entertainment.png","datePublished":"2021-09-18T03:09:48+00:00","dateModified":"2024-01-23T20:26:29+00:00","breadcrumb":{"@id":"https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/#breadcrumb"},"inLanguage":"en-US","potentialAction":[{"@type":"ReadAction","target":["https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/"]}]},{"@type":"ImageObject","inLanguage":"en-US","@id":"https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/#primaryimage","url":"https://developers.meethue.com/wp-content/uploads/2018/02/Architecture_overview_entertainment.png","contentUrl":"https://developers.meethue.com/wp-content/uploads/2018/02/Architecture_overview_entertainment.png"},{"@type":"BreadcrumbList","@id":"https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://developers.meethue.com/"},{"@type":"ListItem","position":2,"name":"Develop","item":"https://developers.meethue.com/develop/"},{"@type":"ListItem","position":3,"name":"Hue Entertainment","item":"https://developers.meethue.com/develop/hue-entertainment/"},{"@type":"ListItem","position":4,"name":"Hue Entertainment API"}]},{"@type":"WebSite","@id":"https://developers.meethue.com/#website","url":"https://developers.meethue.com/","name":"Philips Hue Developer Program","description":"Philips Hue Developer Program","publisher":{"@id":"https://developers.meethue.com/#organization"},"potentialAction":[{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://developers.meethue.com/?s={search_term_string}"},"query-input":{"@type":"PropertyValueSpecification","valueRequired":true,"valueName":"search_term_string"}}],"inLanguage":"en-US"},{"@type":"Organization","@id":"https://developers.meethue.com/#organization","name":"Signify","url":"https://developers.meethue.com/","logo":{"@type":"ImageObject","inLanguage":"en-US","@id":"https://developers.meethue.com/#/schema/logo/image/","url":"https://developers.meethue.com/wp-content/uploads/2019/03/Philips_Hue_Freestanding_1P_Vert_Jul20176.png","contentUrl":"https://developers.meethue.com/wp-content/uploads/2019/03/Philips_Hue_Freestanding_1P_Vert_Jul20176.png","width":591,"height":427,"caption":"Signify"},"image":{"@id":"https://developers.meethue.com/#/schema/logo/image/"},"sameAs":["https://x.com/philipshuedev"]}]}</script>
+	<!-- / Yoast SEO plugin. -->
+
+
+<link rel="alternate" type="application/rss+xml" title="Philips Hue Developer Program &raquo; Feed" href="https://developers.meethue.com/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Philips Hue Developer Program &raquo; Comments Feed" href="https://developers.meethue.com/comments/feed/" />
+<script type="text/javascript">
+/* <![CDATA[ */
+window._wpemojiSettings = {"baseUrl":"https:\/\/s.w.org\/images\/core\/emoji\/14.0.0\/72x72\/","ext":".png","svgUrl":"https:\/\/s.w.org\/images\/core\/emoji\/14.0.0\/svg\/","svgExt":".svg","source":{"concatemoji":"https:\/\/developers.meethue.com\/wp-includes\/js\/wp-emoji-release.min.js"}};
+/*! This file is auto-generated */
+!function(i,n){var o,s,e;function c(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(o,JSON.stringify(t))}catch(e){}}function p(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data),r=(e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0),new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data));return t.every(function(e,t){return e===r[t]})}function u(e,t,n){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\uddfa\ud83c\uddf3","\ud83c\uddfa\u200b\ud83c\uddf3")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!n(e,"\ud83e\udef1\ud83c\udffb\u200d\ud83e\udef2\ud83c\udfff","\ud83e\udef1\ud83c\udffb\u200b\ud83e\udef2\ud83c\udfff")}return!1}function f(e,t,n){var r="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):i.createElement("canvas"),a=r.getContext("2d",{willReadFrequently:!0}),o=(a.textBaseline="top",a.font="600 32px Arial",{});return e.forEach(function(e){o[e]=t(a,e,n)}),o}function t(e){var t=i.createElement("script");t.src=e,t.defer=!0,i.head.appendChild(t)}"undefined"!=typeof Promise&&(o="wpEmojiSettingsSupports",s=["flag","emoji"],n.supports={everything:!0,everythingExceptFlag:!0},e=new Promise(function(e){i.addEventListener("DOMContentLoaded",e,{once:!0})}),new Promise(function(t){var n=function(){try{var e=JSON.parse(sessionStorage.getItem(o));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(s),u.toString(),p.toString()].join(",")+"));",r=new Blob([e],{type:"text/javascript"}),a=new Worker(URL.createObjectURL(r),{name:"wpTestEmojiSupports"});return void(a.onmessage=function(e){c(n=e.data),a.terminate(),t(n)})}catch(e){}c(n=f(s,u,p))}t(n)}).then(function(e){for(var t in e)n.supports[t]=e[t],n.supports.everything=n.supports.everything&&n.supports[t],"flag"!==t&&(n.supports.everythingExceptFlag=n.supports.everythingExceptFlag&&n.supports[t]);n.supports.everythingExceptFlag=n.supports.everythingExceptFlag&&!n.supports.flag,n.DOMReady=!1,n.readyCallback=function(){n.DOMReady=!0}}).then(function(){return e}).then(function(){var e;n.supports.everything||(n.readyCallback(),(e=n.source||{}).concatemoji?t(e.concatemoji):e.wpemoji&&e.twemoji&&(t(e.twemoji),t(e.wpemoji)))}))}((window,document),window._wpemojiSettings);
+/* ]]> */
+</script>
+<style id='wp-emoji-styles-inline-css' type='text/css'>
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+</style>
+<link rel='stylesheet' id='wp-block-library-css' href='https://developers.meethue.com/wp-includes/css/dist/block-library/style.min.css' type='text/css' media='all' />
+<style id='classic-theme-styles-inline-css' type='text/css'>
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+</style>
+<style id='global-styles-inline-css' type='text/css'>
+body{--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgba(252,185,0,1) 0%,rgba(255,105,0,1) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgba(255,105,0,1) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgba(255, 255, 255, 1), 6px 6px rgba(0, 0, 0, 1);--wp--preset--shadow--crisp: 6px 6px 0px rgba(0, 0, 0, 1);}:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flow > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}body .is-layout-flow > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}body .is-layout-flow > .aligncenter{margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > .alignleft{float: left;margin-inline-start: 0;margin-inline-end: 2em;}body .is-layout-constrained > .alignright{float: right;margin-inline-start: 2em;margin-inline-end: 0;}body .is-layout-constrained > .aligncenter{margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)){max-width: var(--wp--style--global--content-size);margin-left: auto !important;margin-right: auto !important;}body .is-layout-constrained > .alignwide{max-width: var(--wp--style--global--wide-size);}body .is-layout-flex{display: flex;}body .is-layout-flex{flex-wrap: wrap;align-items: center;}body .is-layout-flex > *{margin: 0;}body .is-layout-grid{display: grid;}body .is-layout-grid > *{margin: 0;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+.wp-block-navigation a:where(:not(.wp-element-button)){color: inherit;}
+:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}
+:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}
+.wp-block-pullquote{font-size: 1.5em;line-height: 1.6;}
+</style>
+<link rel='stylesheet' id='tabulate-timepicker-css' href='https://developers.meethue.com/wp-content/plugins/tabulate/assets/jquery-ui-timepicker-addon.css' type='text/css' media='all' />
+<link rel='stylesheet' id='tabulate-leaflet-css' href='https://developers.meethue.com/wp-content/plugins/tabulate/assets/leaflet/css/leaflet.css' type='text/css' media='all' />
+<link rel='stylesheet' id='tabulate-jquery-ui-css' href='https://developers.meethue.com/wp-content/plugins/tabulate/assets/jquery-ui/themes/base/jquery-ui.min.css' type='text/css' media='all' />
+<link rel='stylesheet' id='tabulate-styles-css' href='https://developers.meethue.com/wp-content/plugins/tabulate/assets/style.css' type='text/css' media='all' />
+<link rel='stylesheet' id='hue_developer_theme-style-css' href='https://developers.meethue.com/wp-content/themes/hue_developer_theme/style.css' type='text/css' media='all' />
+<link rel='stylesheet' id='newsletter-css' href='https://developers.meethue.com/wp-content/plugins/newsletter/style.css' type='text/css' media='all' />
+<link rel='stylesheet' id='enlighterjs-css' href='https://developers.meethue.com/wp-content/plugins/enlighter/cache/enlighterjs.min.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_fonticons_ii-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-fonticons-ii.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_fonticons_fa-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-fonticons-fa.css' type='text/css' media='all' />
+<link rel='stylesheet' id='select2-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/select2/select2.min.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_crop-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-crop.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_modal-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-modal.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_styles-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-styles.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_profile-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-profile.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_account-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-account.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_misc-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-misc.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_fileupload-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-fileupload.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_datetime-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/pickadate/default.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_datetime_date-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/pickadate/default.date.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_datetime_time-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/pickadate/default.time.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_raty-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-raty.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_scrollbar-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/simplebar.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_tipsy-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-tipsy.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_responsive-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-responsive.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_default_css-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/css/um-old-default.css' type='text/css' media='all' />
+<link rel='stylesheet' id='um_old_css-css' href='https://developers.meethue.com/wp-content/plugins/ultimate-member/../../uploads/ultimatemember/um_old_settings.css' type='text/css' media='all' />
+<link rel='stylesheet' id='icwp-wpsf-userprofile-css' href='https://developers.meethue.com/wp-content/plugins/wp-simple-firewall/assets/dist/shield-userprofile.bundle.css?mtime=1772747128' type='text/css' media='all' />
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.min.js" id="jquery-core-js"></script>
+<script type="text/javascript" src="https://code.jquery.com/jquery-migrate-3.3.2.min.js" id="jquery-migrate-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/themes/hue_developer_theme/js/my-scripts.js" id="my-scripts-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-gdpr.min.js" id="um-gdpr-js"></script>
+<link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://developers.meethue.com/xmlrpc.php?rsd" />
+
+<link rel='shortlink' href='https://developers.meethue.com/?p=3372' />
+		<style type="text/css">
+			.um_request_name {
+				display: none !important;
+			}
+		</style>
+	<link rel="icon" href="https://developers.meethue.com/wp-content/uploads/2025/09/cropped-hue_site_icon-32x32.png" sizes="32x32" />
+<link rel="icon" href="https://developers.meethue.com/wp-content/uploads/2025/09/cropped-hue_site_icon-192x192.png" sizes="192x192" />
+<link rel="apple-touch-icon" href="https://developers.meethue.com/wp-content/uploads/2025/09/cropped-hue_site_icon-180x180.png" />
+<meta name="msapplication-TileImage" content="https://developers.meethue.com/wp-content/uploads/2025/09/cropped-hue_site_icon-270x270.png" />
+		<style type="text/css" id="wp-custom-css">
+			div #gridcontainer h2 {
+	margin-top:0;
+	margin-bottom:0;	
+}
+div #gridcontainer p{
+	float:left;
+}
+
+div #gridcontainer h2 a {
+	height:auto;
+	margin-bottom:0px;
+}
+
+div #gridcontainer .postimage {
+	height:0;
+}
+
+div #gridcontainer .postimage img {
+	height:0;
+}
+
+div.entry-content a, div.entry-content a:link,div.entry-contenta:visited, div.entry-content a:hover  {
+	color:orange;!important
+}
+
+
+		</style>
+		</head>
+
+<body class="page-template-default page page-id-3372 page-child parent-pageid-1349 logged-in wp-custom-logo">
+	<div id="page" class="site">
+		<a class="skip-link screen-reader-text" href="#content">Skip to content</a>
+
+		<header >
+			<a href="https://developers.meethue.com"><img id="imgm" class src="https://developers.meethue.com/wp-content/themes/hue_developer_theme/img/moblogo.png"></a>
+			<div class="bannerDev">
+				<nav id="site-navigation" class="main-navigation">
+
+					<div class="myNavigation">
+
+						<div class="hueLogo"><a href="https://developers.meethue.com"><img id="imgd" class src="https://developers.meethue.com/wp-content/themes/hue_developer_theme/img/site_logo.png"></a>
+
+						</div>
+						<br>	
+						<div class="primary-menu-div">
+
+							<div class="menu-main-menu-loggedin-container"><ul id="primary-menu" class="menu"><li id="menu-item-1137" class="leftMain menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-1137"><a href="#">Explore</a>
+<ul class="sub-menu">
+	<li id="menu-item-1138" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1138"><a href="https://developers.meethue.com/explore/why-develop-for-hue/">Why Develop for Hue</a></li>
+	<li id="menu-item-2664" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-2664"><a href="https://developers.meethue.com/explore/hue-app-showcase/">Hue App Showcase</a></li>
+</ul>
+</li>
+<li id="menu-item-1140" class="leftMain menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-1140"><a href="#">Develop</a>
+<ul class="sub-menu">
+	<li id="menu-item-3907" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-3907"><a href="https://developers.meethue.com/develop/hue-api-v2/getting-started/">Getting started</a></li>
+	<li id="menu-item-3903" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-3903"><a href="https://developers.meethue.com/develop/application-design-guidance/">Application Design Guidance</a></li>
+	<li id="menu-item-1143" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1143"><a href="https://developers.meethue.com/develop/hue-api/">Hue API V1</a></li>
+	<li id="menu-item-3537" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-3537"><a href="https://developers.meethue.com/develop/hue-api-v2/">Hue API V2</a></li>
+	<li id="menu-item-1354" class="menu-item menu-item-type-post_type menu-item-object-page current-page-ancestor menu-item-1354"><a href="https://developers.meethue.com/develop/hue-entertainment/">Hue Entertainment</a></li>
+	<li id="menu-item-1144" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1144"><a href="https://developers.meethue.com/develop/tools-and-sdks/">Tools and SDKs</a></li>
+</ul>
+</li>
+<li id="menu-item-1145" class="leftMain menu-item menu-item-type-post_type menu-item-object-page menu-item-1145"><a href="https://developers.meethue.com/support/">Support</a></li>
+<li id="menu-item-1452" class="leftMain menu-item menu-item-type-post_type menu-item-object-page menu-item-1452"><a href="https://developers.meethue.com/job-vacancies/">Job Vacancies</a></li>
+<li id="menu-item-1147" class="leftMain menu-item menu-item-type-custom menu-item-object-custom menu-item-1147"><a href="/forum">Forum</a></li>
+<li id="menu-item-1148" class="rightMain menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-1148"><a href="#">Ingo</a>
+<ul class="sub-menu">
+	<li id="menu-item-1181" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1181"><a href="https://developers.meethue.com/my-apps/">Remote Hue API appids</a></li>
+	<li id="menu-item-1321" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-1321"><a href="https://developers.meethue.com/account/">Profile</a></li>
+	<li id="menu-item-1150" class="menu-item menu-item-type-custom menu-item-object-custom  last_item menu-item-1150"><a href="https://developers.meethue.com/wp-login.php?action=logout&#038;_wpnonce=a77240936f">Log out</a></li>
+</ul>
+</li>
+</ul></div>						</div>
+						<p class= "titleExplore">How to <span class="boldTitle">develop for Hue?</span></p>						</div>
+					</nav><!-- #site-navigation -->
+
+				</div>
+			</header><!-- #masthead -->
+
+
+			<div id="content" class="site-content">
+
+<div id="primary" class="">
+
+    <div class="localnavDiv">
+
+        
+        <ul class="localNav">
+
+
+            <div class="menu-develop_menulocal-menu-container"><ul id="menu-develop_menulocal-menu" class="localNav"><li id="menu-item-174" class="localLeft menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-174"><a href="#">Develop</a>
+<ul class="sub-menu">
+	<li id="menu-item-160" class="localRight menu-item menu-item-type-post_type menu-item-object-page menu-item-160"><a href="https://developers.meethue.com/develop/tools-and-sdks/">Tools and SDKs</a></li>
+	<li id="menu-item-1361" class="localRight menu-item menu-item-type-post_type menu-item-object-page current-page-ancestor menu-item-1361"><a href="https://developers.meethue.com/develop/hue-entertainment/">Hue Entertainment</a></li>
+	<li id="menu-item-3531" class="localRight menu-item menu-item-type-post_type menu-item-object-page menu-item-3531"><a href="https://developers.meethue.com/develop/hue-api-v2/">Hue API V2</a></li>
+	<li id="menu-item-161" class="localRight menu-item menu-item-type-post_type menu-item-object-page menu-item-161"><a href="https://developers.meethue.com/develop/hue-api/">Hue API V1</a></li>
+	<li id="menu-item-3900" class="localRight menu-item menu-item-type-post_type menu-item-object-page menu-item-3900"><a href="https://developers.meethue.com/develop/application-design-guidance/">Application Design Guidance</a></li>
+	<li id="menu-item-3904" class="localRight menu-item menu-item-type-post_type menu-item-object-page  last_item menu-item-3904"><a href="https://developers.meethue.com/develop/hue-api-v2/getting-started/">Getting started</a></li>
+</ul>
+</li>
+</ul></div>
+        </ul>
+
+    </div>
+
+    <main id="main" class="site-main">
+
+        <div class="menu-hue-entertainment-container"><ul id="menu-hue-entertainment" class="nav-menu"><li id="menu-item-1447" class="localLi menu-item menu-item-type-custom menu-item-object-custom menu-item-1447"><a href="https://developers.meethue.com/develop/hue-entertainment">Overview</a></li>
+<li id="menu-item-1442" class="localLi menu-item menu-item-type-post_type menu-item-object-page menu-item-1442"><a href="https://developers.meethue.com/develop/hue-entertainment/a-totally-new-mechanism-to-control-philips-hue-is-released/">Hue Entertainment Blog</a></li>
+<li id="menu-item-3538" class="localLi menu-item menu-item-type-post_type menu-item-object-page current-menu-item page_item page-item-3372 current_page_item menu-item-3538"><a href="https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/" aria-current="page">Hue Entertainment API</a></li>
+<li id="menu-item-1446" class="localLi menu-item menu-item-type-post_type menu-item-object-page menu-item-1446"><a href="https://developers.meethue.com/develop/hue-entertainment/hue-edk-effect-creation/">Hue EDK Effect Creation</a></li>
+<li id="menu-item-1443" class="localLi menu-item menu-item-type-post_type menu-item-object-page menu-item-1443"><a href="https://developers.meethue.com/develop/hue-entertainment/light-effects-experience-guide-book/">Light Effect Guide</a></li>
+<li id="menu-item-3040" class="localLi menu-item menu-item-type-post_type menu-item-object-page  last_item menu-item-3040"><a href="https://developers.meethue.com/develop/hue-entertainment/hue-hdmi-sync-box-api/">Hue HDMI Sync Box API</a></li>
+</ul></div>
+<article id="post-3372" class="post-3372 page type-page status-publish hentry category-clipv2-articles">
+	<header class="entry-header">
+		<h1 class="entry-title">Hue Entertainment API</h1>		<span style="font-family:CentraleSans-Light; ;font-size:18px;">The Hue Entertainment API supports a communication protocol which allows a light streaming functionality with the Philips Hue System. Using this protocol, it is possible to stream lighting effects to multiple lights in parallel with a high update rate.     <span>
+		</header><!-- .entry-header -->
+		<img id="imgm" class src="https://developers.meethue.com/wp-content/themes/hue_developer_theme/img/moblogo.png"> 
+				<div class="entry-content">
+
+			<p>‘<strong>Philips Hue Entertainment</strong>’ is a major feature for the Philips Hue v2 bridge, Philips color capable lights and the Philips Hue app which strengthens lighting system’s integration into any home entertainment experience.</p>
+<p>Our goal with Hue Entertainment is to fully immerse Hue users in their music, TV, movies and video games with high-quality, synchronized lighting effects.</p>
+<p><a href="https://developers.meethue.com/wp-content/uploads/2018/02/Architecture_overview_entertainment.png"><img fetchpriority="high" decoding="async" class="alignnone size-full wp-image-926" src="https://developers.meethue.com/wp-content/uploads/2018/02/Architecture_overview_entertainment.png" alt="" width="879" height="494" /></a></p>
+<p>As you may already know, wireless communication with Philips Hue is based on the ‘Zigbee’ protocol. Zigbee uses a mesh network where every light repeats a message, providing simple, secure and reliable coverage in any home. This technology is fantastic for scene setting and automated-command use cases but runs into limitations when we try to push fast-changing special effects in live entertainment content.</p>
+<p>To create the synchronized effect we wanted, Hue Entertainment is developed as a new streaming-optimized interface which co-exists next to Zigbee.</p>
+<h2><a id="how-hue-entertainment-works"></a>How Hue Entertainment works</h2>
+<p>A Hue Entertainment command is built through the following process:</p>
+<ol>
+<li>The command packages together the target state of up to 10 light channels in a custom Zigbee message.</li>
+<li>This message is sent as a unicast over the mesh network to an automatically chosen proxy node in the target entertainment room.</li>
+<li>This proxy node sends out a non-repeating low level MAC layer broadcast which all nearby lights will hear.</li>
+<li>The nearby lights unbundle the message and act on their states.</li>
+</ol>
+<p>Since the command is unicasting together with MAC broadcasts, we can stream commands 25 times per second to any light in the home whilst still creating spatial effects across multiple lights, all without causing network congestion.</p>
+<p>Additionally, the mechanism has no retries, which benefits an entertainment setting where synchronization is critical: for example, a delayed frame from an explosion in an action movie is worse than skipping the frame entirely.</p>
+<h2><a id="a-new-api-and-sdk"></a>A dedicated API and SDK</h2>
+<p>The need for a time synchronization-driven interface led us towards a dedicated bridge-streaming API for Hue Entertainment. This bridge API is based on UDP/IP (with DTLS for security) rather than HTTP, allowing us to drop frames to maintain synchronization as necessary.</p>
+<p>We released a dedicated software development kit we’ve created, so developers can easily build applications combining lighting and entertainment. Called the Hue Entertainment Development Kit (EDK), it is written in C++ with portability and usability in the gaming world in mind.</p>
+<p>The EDK not only wraps the Hue bridge discovery and streaming API, but also provides a light effect-rendering engine. Often, replicating effects in a room needs to be independent of the specific home setup, so the EDK takes care of mapping spatial effects onto the user’s specific entertainment layout, which is created in the Hue app. This means the explosion or lightning to your left can be programmed to affect all three lights on that side of the room, or just one light, depending on your setup.</p>
+<p>The user entertainment configuration indicating which lights they use and where they are placed is stored on the bridge. This way you can reuse the user’s specific entertainment layout with other applications, such that a user is not bothered every time with creating the setup. Actually, the creation of the home entertainment setup is an integral part of the Hue app which makes it easier for your app to start.</p>
+<p>The EDK will also include the setup of the security with the bridge. This means that you do not have to bother with the DTLS setup and encryption of the content of the stream.</p>
+<p><a href="https://developers.meethue.com/wp-content/uploads/2018/02/Unicast_Broadcast_MAC_broadcast_Combination.jpg"><img decoding="async" class="alignnone size-full wp-image-927" src="https://developers.meethue.com/wp-content/uploads/2018/02/Unicast_Broadcast_MAC_broadcast_Combination.jpg" alt="" width="1024" height="380" /></a></p>
+<p>It is recommended to use the Philips Hue entertainment EDK, however, in case you want to make your own implementation or library to stream to the Hue bridge we will explain the Hue bridge API’s in the next chapters.</p>
+<p>The EDK contains a robust connection flow and provides helper classes to create effects easily. For EDK information, see <span style="color: #ff9900;"><a style="color: #ff9900;" href="https://developers.meethue.com/develop/hue-entertainment/">developer page.</a></span></p>
+<h2><a id="getting-started-with-streaming-api"></a>Getting started with Streaming API</h2>
+<p>To get started with the streaming API from scratch without the use of the SDK or EDK you can use the follow steps to get it operational:</p>
+<ol>
+<li>Find the IP address of the bridge in the network, see also <span style="color: #ff9900;"><a style="color: #ff9900;" href="https://developers.meethue.com/develop/hue-api-v2/getting-started">getting-started</a></span></li>
+<li>Verify that the bridge has software version 1948086000 or higher (check “swversion” in the returned parameter when performing a GET on https://&lt;ip-address&gt;/api/config )</li>
+<li>The Hue bridge uses DTLS to secure the streaming data. Before you can stream to the bridge, you first need to authenticate. Your application needs to create a username (see also <span style="color: #ff9900;"><a style="color: #ff9900;" href="https://developers.meethue.com/develop/hue-api-v2/getting-started">getting-started</a></span>), and set generateclientkey to true. E.g. by performing a POST on <span style="color: #ff9900;"><a style="color: #ff9900;" href="https://&lt;ip-address&gt;/api">https://&lt;ip-address&gt;/api</a></span> with for instance the following body:</li>
+</ol>
+<pre class="EnlighterJSRAW" data-enlighter-language="null">{
+    "devicetype":"myapplication#myiphone",
+    "generateclientkey":true
+}</pre>
+<p>This will return the username and a random 16 byte clientkey in case the user push links the bridge. This key is encoded as ASCII hex string of length 32, e.g.</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="null">[
+    {
+         "success":{
+              "username":"myzFXhsLU5Wg10eBithGE-LFikgjC7Q7SEGZsoEf",
+              "clientkey":"E3B550C65F78022EFD9E52E28378583"
+                   }
+     }
+]</pre>
+<p>The &#8220;username&#8221; is used as &#8220;hue-application-key&#8221; in the REST requests to retrieve and control the entertainment configurations. The &#8220;clientkey&#8221; is used as the Pre-Shared Key (PSK) in the DTLS streaming connection. The clientkey is only exposed in the response once and can not be retrieved again. It never expires, and remains valid as long as the whitelist entry of your app is in the bridge. Once you have retrieved the username and clientkey, you need to retrieve a hue-application-id. This can be done by performing a GET on https://&lt;ip-address&gt;/auth/v1 endpoint with the username in the hue-application-key header. If the application key is valid, the bridge will respond with 200 OK and a &#8216;hue-application-id&#8217; response header. This hue-application-id is used for the PSK identity when setting up the DTLS connection. It is also used in the active_streamer field on the entertainment configuration to determine which application is currently streaming to that configuration.</p>
+<ol>
+<li value="4">The Hue app makes it is possible to create an entertainment area, select lights and place them in somewhere in a room visualized by the GUI of the Hue app. This area has a type identifier “entertainment”, and this type of areas can contain a list of the lights and their x/y position within in the room in relation to a screen and the position of the user. The position of the user and the screen can be used to make optimal special lighting effects in the room of the user.</li>
+</ol>
+<p>You can retrieve the list of entertainment areas with a GET request on entertainment configuration resource:</p>
+<table>
+<tbody>
+<tr>
+<td>Address</td>
+<td><code><span style="font-size: 16px;"> https://&lt;bridge IP address&gt;/clip/v2/resource/entertainment_configuration</span></code></td>
+</tr>
+<tr>
+<td>Method</td>
+<td><code><span style="font-size: 16px;">GET</span></code></td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code><span style="font-size: 16px;">hue-application-key: &lt;appkey (== "username")&gt;</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>This is an example of the relevant fields for a single area:</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="js">{
+    "id": "1a8d99cc-967b-44f2-9202-43f976c0fa6b",
+    "type": "entertainment_configuration",
+    "metadata": { "name": "Entertainment area 1" },
+    "configuration_type": "screen",
+    "channels": [
+        {
+            "channel_id": 0,
+            "position": { "x": -0.6, "y": 0.8, "z": 0.0 }
+        },
+        {
+            "channel_id": 1,
+            "position": { "x": 0.6, "y": 0.8, "z": 0.0 }
+        }
+    ],
+    "status": "inactive"
+}
+</pre>
+<p>If there is only one area, you can use it by default. If there are multiple areas, you should let the user select one by name. In case there is no area yet, you can point the user towards the Hue app to create one. If your app is on Android or iOS you could deeplink for extra convenience:</p>
+<ul>
+<li>Android intent: <code>hue.settings.ADD_ENTERTAINMENT_AREA</code> with the <code>BRIDGEID</code> argument.</li>
+<li>iOS URL schema: <code>hue2sync://entertainment-setup?bridge_id=${bridgeId ?? "--"}</code> where <code>bridgeId</code> is parameter.</li>
+</ul>
+<p>&nbsp;</p>
+<ol>
+<li value="5">Send a start action, using PUT to entertainment_configuration/&lt;identifier of entertainment configuration&gt;</li>
+</ol>
+<p>&nbsp;</p>
+<table>
+<tbody>
+<tr>
+<td>Address</td>
+<td><code><span style="font-size: 16px;">https://&lt;bridge IP address&gt;/clip/v2/entertainment_configuration/&lt;id&gt;</span></code></td>
+</tr>
+<tr>
+<td>Method</td>
+<td><code><span style="font-size: 16px;">PUT</span></code></td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code><span style="font-size: 16px;">hue-application-key: &lt;appkey&gt;</span></code></td>
+</tr>
+<tr>
+<td>Body</td>
+<td><code><span style="font-size: 16px;">{"action":"start"}</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Only one stream can be active for an entertainment area, the active_streamer field in the entertainment configuration indicates the application which is currently streaming.</p>
+<ol>
+<li value="6">Once the status has changed to active, you can start the DTLS handshaking with the bridge, which will generate a session key. More information below in <a style="color: #ff6600;" href="https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/#DTLS">DTLS Handshaking</a>. It is advised to use a DTLS library for your application, e.g. mbedtls.</li>
+<li value="7">After a successful handshake you can start to stream to the bridge, to stream to the light within the area. More information below in <a style="color: #ff6600;" href="https://developers.meethue.com/develop/hue-entertainment/hue-entertainment-api/#StreamCaption">Streaming Message Format</a>. After 10 seconds of no activity the connection is closed automatically, and status is set back to inactive. It is advised to send a continuous stream of messages, if necessary the same message, due to the lossy behavior. The recommended steaming speed is around 50-60 frames/sec.</li>
+<li value="8">You can stop the streaming by setting {&#8220;action&#8221;:&#8221;stop&#8221;}<a id="DTLS" name="DTLS"></a></li>
+</ol>
+<h3><a id="DTLS"></a>DTLS Handshaking</h3>
+<p>UDP port 2100 is used for DTLS handshaking and streaming. Only DTLS mode version 1.2 with Pre-Shared Key (PSK) Key exchange method with TLS_PSK_WITH_AES_128_GCM_SHA256 set as Cipher Suite is supported.</p>
+<p>The PSK is provided by the CLIP authentication passing the {“generateclientkey”=true} parameter when push linking your application.</p>
+<p>The PSK is derived from the “client key” in the response by decoding the 32 character ASCII hex string into its 16 byte binary representation.</p>
+<p>The PSK identity exactly matches the “hue-application-id” (ASCII / UTF-8 string). Retrieving your application id can be done by performing a GET on `/auth/v1` endpoint with the hue-application-key header. When authenticated, the bridge will respond with 200 OK and a &#8216;hue-application-id&#8217; response header.</p>
+<p>Below table describes the error types which the Hue bridge streaming server can respond to the client.</p>
+<table border="0" cellspacing="0" cellpadding="0">
+<tbody>
+<tr>
+<td><strong>Error</strong></td>
+<td><strong>Type</strong></td>
+<td><strong>Description</strong></td>
+</tr>
+<tr>
+<td><strong>protocol_version</strong></td>
+<td>Fatal</td>
+<td>DTLS version not supported</td>
+</tr>
+<tr>
+<td><strong>insufficient_security</strong></td>
+<td>Fatal</td>
+<td>Higher cipher security required</td>
+</tr>
+<tr>
+<td><strong>handshake_failure</strong></td>
+<td>Fatal</td>
+<td>Other insufficient security parameters</td>
+</tr>
+<tr>
+<td><strong>user_cancelled</strong></td>
+<td>Warning</td>
+<td>Maximum number of sessions already active</td>
+</tr>
+<tr>
+<td><strong>unknown_psk_identity</strong></td>
+<td>Fatal</td>
+<td>Unknown identity</td>
+</tr>
+<tr>
+<td><strong>decrypt_error</strong></td>
+<td>Fatal</td>
+<td>Invalid PSK</td>
+</tr>
+<tr>
+<td><strong>close_notify</strong></td>
+<td>Fatal</td>
+<td>Notification that server will disconnect e.g. because streaming is disabled via CLIP</td>
+</tr>
+<tr>
+<td><strong>Internal_error</strong></td>
+<td>Fatal</td>
+<td>Internal bridge error</td>
+</tr>
+<tr>
+<td><strong>unexpected_message</strong></td>
+<td>Fatal</td>
+<td>Protocol failure</td>
+</tr>
+<tr>
+<td><strong>decode_error</strong></td>
+<td>Fatal</td>
+<td>Protocol failure</td>
+</tr>
+<tr>
+<td><strong>bad_record_mac</strong></td>
+<td>Fatal</td>
+<td>Protocol failure</td>
+</tr>
+</tbody>
+</table>
+<h3><a id="StreamCaption"></a>Streaming and Stream message format</h3>
+<p>As soon the DTLS handshaking has taken place, you can start streaming UDP (encrypted) messages towards port 2100 of the Hue bridge.</p>
+<p>Protocol uses big (network) endianness, and every message has a header of 16 bytes, the entertainment configuration UUID of 36 bytes, and then the data for the light channels. The data for the channels can be variable depending on the number of channels to be controlled in the message, in which every light channel uses 7 bytes, consisting of ID and RGB16 color values. Maximum 20 channels are supported in a message.</p>
+<table border="1" width="0" cellspacing="0" cellpadding="0" align="left">
+<tbody>
+<tr>
+<td><strong>Field</strong></td>
+<td><strong>Name</strong></td>
+<td><strong>Size (bytes)</strong></td>
+<td><strong>Description</strong></td>
+</tr>
+<tr>
+<td><strong>1</strong></td>
+<td>Protocol name</td>
+<td>9</td>
+<td>Array of 9 characters{‘H’, ‘u’, ‘e’, ‘S’, ‘t’, ‘r’, ‘e’, ‘a’, ‘m’}</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Version</td>
+<td>2</td>
+<td>Streaming API version 1 byte major version (0x02), 1 byte minor version (0x00)</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Sequence ID</td>
+<td>1</td>
+<td>Can be used to indicate the message sequence number. Currently it is ignored by the bridge.</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Reserved</td>
+<td>2</td>
+<td>Reserved, all zeros should be sent.</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td>Color space</td>
+<td>1</td>
+<td>0x00 = RGB; 0x01 = XY Brightness</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td>Reserved</td>
+<td>1</td>
+<td>Reserved, all zeros should be sent.</td>
+</tr>
+<tr>
+<td><strong>7</strong></td>
+<td>entertainment configuration id</td>
+<td>36</td>
+<td>clipv2 uuid of the entertainment configuration to stream to</td>
+</tr>
+<tr>
+<td><strong>8-27</strong></td>
+<td>Data [channel slots]</td>
+<td>7 * #channels</td>
+<td>Maximum 20 slots of color data, each containing 7 bytes consisting of:</td>
+</tr>
+<tr>
+<td></td>
+<td>ID</td>
+<td>1</td>
+<td>ID of the channel</td>
+</tr>
+<tr>
+<td></td>
+<td>Value</td>
+<td>3 * 2</td>
+<td>RGB or XY+Brightness with 16 bit resolution per element</td>
+</tr>
+</tbody>
+</table>
+<p>Example of a stream message:</p>
+<table border="1" cellspacing="0" cellpadding="0">
+<tbody>
+<tr>
+<td><strong>Example</strong></td>
+</tr>
+<tr>
+<td>{</p>
+<p>&#8216;H&#8217;, &#8216;u&#8217;, &#8216;e&#8217;, &#8216;S&#8217;, &#8216;t&#8217;, &#8216;r&#8217;, &#8216;e&#8217;, &#8216;a&#8217;, &#8216;m&#8217;, //protocol</p>
+<p>0x02, 0x00, //version 2.0</p>
+<p>0x07, //sequence number 7</p>
+<p>0x00, 0x00, //Reserved write 0’s</p>
+<p>0x00, //color mode RGB</p>
+<p>0x00, //Reserved, write 0’s</p>
+<p>&#8220;1a8d99cc-967b-44f2-9202-43f976c0fa6b&#8221;, //entertainment configuration id</p>
+<p>0x00, //channel ID 0</p>
+<p>0xff, 0xff, 0x00, 0x00, 0x00, 0x00, //red</p>
+<p>0x01, //channel ID 1</p>
+<p>0x00, 0x00, 0x00, 0x00, 0xff, 0xff //blue</p>
+<p>}</td>
+</tr>
+</tbody>
+</table>
+<p>&nbsp;</p>
+<p>The color space formats supported are RGB and xy+Brightness. RGB can be used for simplicity and to get the widest range of colors for each bulb. However, to get full color consistency over various types of lamps (i.e. gamuts) and/or match with RGB values of typical displays who have a much narrower color range, you can send xy+Brightness values, as these are hardware independent.</p>
+<p>Every individual color component has a 16 bit resolution on the API. RGB values are converted into xy+Brightness by the Hue bridge. The x and y values supported by the lamps have a 12-bits resolution, and brightness 11 bits. This means that the 16 bit resolution on the API will be truncated.</p>
+<p>For xy, the minimum value of 0x0000 is equivalent to 0.00000, and 0xffff is equivalent to 1.00000</p>
+<p>The used color space format is defined in the “Color space” byte part of the message header.</p>
+<h2><a id="best-practices"></a>Best Practices</h2>
+<p>Please keep the following in mind for best practices:</p>
+<ul>
+<li>The streaming makes use of UDP, which can result in that certain messages get lost, that is why it is important to continuously stream messages, even when it would mean repeating the same messages or light values, typically a streaming rate of 50-60Hz is used.</li>
+<li>As soon you are streaming to lights, regular API commands will change light settings in the background, but are not visible on the light (they would continuously be overwritten), so during this time the brightness/color values on the API will not match what you see on the light.</li>
+<li>The bridge sends maximum at 25 Hz messages over ZigBee. Thus, the (fastest) effect rate should be 2 &#8211; 3 times slower than this 25 Hz, i.e &lt; 12.5 Hz.</li>
+<li>In case you no longer stream, disable it.</li>
+<li>Only one streaming session can take place at a time.</li>
+<li>Please notify or warn the user that your application makes use of fast changing light effects conditions alone, or in combination with certain content on the screen it may trigger previously undetected epileptic symptoms or seizures in persons who have no history of prior seizures or epilepsy.</li>
+</ul>
+
+			</div><!-- .entry-content -->
+
+			<script>
+
+
+
+				//  <div id="entry-anchor" class="entry-anchor">
+
+				//var anchor_div = document.getElementById("entry-anchor");
+				var anchor = document.getElementsByTagName("h2"); //take all h2
+
+				if( anchor.length>0)
+				{
+
+					var anchor_div = document.createElement("div");
+					anchor_div.setAttribute("class","entry-anchor");
+ 
+					var para = document.createElement("p");
+					para.setAttribute("class", "anchor-title");
+					var text = document.createTextNode("On this page:");
+					para.appendChild(text);
+					anchor_div.appendChild(para);
+
+					for (var i = 0; i < anchor.length; i++) {
+
+						var children = anchor[i].children; //take all children, hopefully anchors  
+						for (var ch = 0; ch < children.length; ch++) {
+							var c = children[ch];
+							if (c.nodeName == "A"); { //if the element is anchor    
+								var id = c.id; // get the the id of each anchor
+								var text = "";
+								var text = anchor[i].innerHTML;
+								var a = document.createElement("a");
+								a.setAttribute("class","findthem");
+								a.href="#"+id;
+								a.innerHTML = text;
+								linebreak = document.createElement("br");
+								if (i > 0){
+									var hr = document.createElement("hr");
+									anchor_div.appendChild(hr);
+								}
+								// anchor_div.appendChild(linebreak);
+								anchor_div.appendChild(a); //div+anchors
+							}
+
+						}
+					}  
+ 
+					var article= document.getElementsByTagName("article");//find the article where i need the div
+
+					article[0].appendChild(anchor_div);
+
+
+				}
+
+				</script>
+
+
+				</article><!-- #post-3372 -->
+</body>
+
+
+
+    </main><!-- #main -->
+</div>
+</div>
+</div>  
+<!-- #primary -->
+
+
+        
+<footer class="hue-footer">
+	<div class="mobileTest">
+			<div class="hue-footer-nav" style="padding-top:25px">
+				<a class="navLink" href="https://developers.meethue.com/support/">Contact</a>
+				<a  class="navLink" href="https://developers.meethue.com/terms-of-use-and-conditions/">Terms & Conditions</a>
+				<a  class="navLink" href="https://www.signify.com/global/privacy/legal-information/privacy-notice">Privacy</a>
+				<a class="navLink" href="https://www.signify.com/global/product-security">Product Security</a>
+			</div>
+    
+			<div class="hue-footer-copyright">
+				<p class="rights" >©2025 Signify Holding. All rights reserved.</p>
+			</div>
+
+		</div>
+	</footer><!-- #colophon -->
+
+	
+<div id="um_upload_single" style="display:none"></div>
+<div id="um_view_photo" style="display:none">
+
+	<a href="javascript:void(0);" data-action="um_remove_modal" class="um-modal-close"
+	   aria-label="Close view photo modal">
+		<i class="um-faicon-times"></i>
+	</a>
+
+	<div class="um-modal-body photo">
+		<div class="um-modal-photo"></div>
+	</div>
+
+</div><script type="text/javascript" src="https://developers.meethue.com/wp-content/themes/hue_developer_theme/js/navigation.js" id="hue_developer_theme-navigation-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/themes/hue_developer_theme/js/skip-link-focus-fix.js" id="hue_developer_theme-skip-link-focus-fix-js"></script>
+<script type="text/javascript" id="newsletter-js-extra">
+/* <![CDATA[ */
+var newsletter_data = {"action_url":"https:\/\/developers.meethue.com\/wp-admin\/admin-ajax.php"};
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/newsletter/main.js" id="newsletter-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/enlighter/cache/enlighterjs.min.js" id="enlighterjs-js"></script>
+<script type="text/javascript" id="enlighterjs-js-after">
+/* <![CDATA[ */
+!function(e,n){if("undefined"!=typeof EnlighterJS){var o={"selectors":{"block":"pre.EnlighterJSRAW","inline":"code.EnlighterJSRAW"},"options":{"indent":4,"ampersandCleanup":true,"linehover":true,"rawcodeDbclick":true,"textOverflow":"break","linenumbers":false,"theme":"atomic","language":"cpp","retainCssClasses":false,"collapse":false,"toolbarOuter":"","toolbarTop":"{BTN_RAW}{BTN_COPY}{BTN_WINDOW}{BTN_WEBSITE}","toolbarBottom":""}};(e.EnlighterJSINIT=function(){EnlighterJS.init(o.selectors.block,o.selectors.inline,o.options)})()}else{(n&&(n.error||n.log)||function(){})("Error: EnlighterJS resources not loaded yet!")}}(window,console);
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/select2/select2.full.min.js" id="select2-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/underscore.min.js" id="underscore-js"></script>
+<script type="text/javascript" id="wp-util-js-extra">
+/* <![CDATA[ */
+var _wpUtilSettings = {"ajax":{"url":"\/wp-admin\/admin-ajax.php"}};
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/wp-util.min.js" id="wp-util-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-crop.min.js" id="um_crop-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-modal.min.js" id="um_modal-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-jquery-form.min.js" id="um_jquery_form-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-fileupload.js" id="um_fileupload-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/pickadate/picker.js" id="um_datetime-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/pickadate/picker.date.js" id="um_datetime_date-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/pickadate/picker.time.js" id="um_datetime_time-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/dist/vendor/wp-polyfill-inert.min.js" id="wp-polyfill-inert-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/dist/vendor/regenerator-runtime.min.js" id="regenerator-runtime-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/dist/vendor/wp-polyfill.min.js" id="wp-polyfill-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/dist/hooks.min.js" id="wp-hooks-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/dist/i18n.min.js" id="wp-i18n-js"></script>
+<script type="text/javascript" id="wp-i18n-js-after">
+/* <![CDATA[ */
+wp.i18n.setLocaleData( { 'text direction\u0004ltr': [ 'ltr' ] } );
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-raty.min.js" id="um_raty-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-tipsy.min.js" id="um_tipsy-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/imagesloaded.min.js" id="imagesloaded-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/masonry.min.js" id="masonry-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-includes/js/jquery/jquery.masonry.min.js" id="jquery-masonry-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/simplebar.min.js" id="um_scrollbar-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-functions.min.js" id="um_functions-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-responsive.min.js" id="um_responsive-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-conditional.min.js" id="um_conditional-js"></script>
+<script type="text/javascript" id="um_scripts-js-extra">
+/* <![CDATA[ */
+var um_scripts = {"max_upload_size":"2097152","nonce":"c0086b9cf1"};
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-scripts.min.js" id="um_scripts-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-profile.min.js" id="um_profile-js"></script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/ultimate-member/assets/js/um-account.min.js" id="um_account-js"></script>
+<script type="text/javascript" id="icwp-wpsf-notbot-js-extra">
+/* <![CDATA[ */
+var shield_vars_notbot = {"strings":{"select_action":"Please select an action to perform.","are_you_sure":"Are you sure?","absolutely_sure":"Are you absolutely sure?"},"comps":{"notbot":{"ajax":{"not_bot":{"action":"shield_action","ex":"capture_not_bot","exnonce":"0e974ecc4e","ajaxurl":"https:\/\/developers.meethue.com\/wp-admin\/admin-ajax.php","_wpnonce":"cd223e62df","_rest_url":"https:\/\/developers.meethue.com\/wp-json\/shield\/v1\/action\/capture_not_bot?exnonce=0e974ecc4e&_wpnonce=cd223e62df"}},"flags":{"skip":false,"required":false}}}};
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://developers.meethue.com/wp-content/plugins/wp-simple-firewall/assets/dist/shield-notbot.bundle.js?mtime=1772747128" id="icwp-wpsf-notbot-js"></script>
+		<script type="text/javascript">
+			jQuery( window ).on( 'load', function() {
+				jQuery('input[name="um_request"]').val('');
+			});
+		</script>
+		<script src="//www.lighting.philips.com/assets/scripts/wa_code.js" async></script> 
+	<script>window._satellite && _satellite.pageBottom();</script> 
+
+</body>
+</html>
+<!--
+Performance optimized by W3 Total Cache. Learn more: https://www.boldgrid.com/w3-total-cache/?utm_source=w3tc&utm_medium=footer_comment&utm_campaign=free_plugin
+
+Object Caching 57/94 objects using Memcached
+Database Caching 37/69 queries in 0.025 seconds using Memcached
+
+Served from: developers.meethue.com @ 2026-03-28 15:29:12 by W3 Total Cache
+-->

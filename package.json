@@ -1,0 +1,49 @@
+{
+    "name": "artnet-bridge-monorepo",
+    "private": true,
+    "type": "module",
+    "workspaces": [
+        "packages/tools",
+        "packages/artnet",
+        "packages/protocol",
+        "packages/protocol-hue",
+        "packages/bridge"
+    ],
+    "bugs": {
+        "url": "https://github.com/Apollon77/artnet-bridge/issues"
+    },
+    "homepage": "https://github.com/Apollon77/artnet-bridge",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Apollon77/artnet-bridge.git"
+    },
+    "author": "Ingo Fischer",
+    "license": "MIT",
+    "scripts": {
+        "prepare": "npm run build-clean",
+        "clean": "node packages/tools/bin/build.js clean",
+        "build-only": "node packages/tools/bin/build.js",
+        "build": "npm run build-only && npm run bundle --workspaces --if-present",
+        "version": "node packages/tools/bin/version.js",
+        "build-clean": "npm run clean && npm run build",
+        "lint": "oxlint --type-aware",
+        "lint-fix": "oxlint --fix --type-aware",
+        "format": "oxfmt \"packages/**/*.ts\"",
+        "format-verify": "oxfmt --check \"packages/**/*.ts\"",
+        "test": "mocha",
+        "server": "node --enable-source-maps packages/bridge/dist/esm/cli.js"
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.10",
+        "glob": "^13.0.6",
+        "globals": "^17.4.0",
+        "oxfmt": "^0.41.0",
+        "oxlint": "^1.56.0",
+        "oxlint-tsgolint": "^0.17.1",
+        "tsx": "^4.21.0",
+        "typescript": "~5.9.3"
+    },
+    "engines": {
+        "node": ">=22.13.0"
+    }
+}
