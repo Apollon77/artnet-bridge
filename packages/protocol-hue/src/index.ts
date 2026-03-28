@@ -1,4 +1,10 @@
 // Hue protocol adapter
+export { HueProtocolAdapter } from "./HueProtocolAdapter.js";
+export type {
+  HueBridgeConnection,
+  HueBridgeConfig,
+  HueAdapterConfig,
+} from "./HueProtocolAdapter.js";
 export { HueClipClient } from "./HueClipClient.js";
 export type {
   HueLight,
