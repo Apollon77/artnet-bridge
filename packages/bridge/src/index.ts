@@ -8,3 +8,4 @@ export {
   DEFAULT_CONFIG,
   validateConfig,
 } from "./config/ConfigSchema.js";
+export { DmxMapper, type ExtractedValue } from "./dmx/DmxMapper.js";
