@@ -1,0 +1,30 @@
+name: 'Install Dependencies'
+description: 'Installs all dependencies needed for testing'
+author: 'Apollon77'
+inputs:
+  node-version:
+    description: 'Node.js version'
+    required: true
+    default: '22.x'
+  os:
+    description: 'Operating system'
+    required: true
+    default: 'ubuntu-latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Use Node.js ${{ inputs.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install dependencies (Non-Windows)
+      if: ${{ inputs.os != 'windows-latest' && inputs.os != 'windows-2019' }}
+      shell: bash
+      run: npm ci --foreground-scripts
+
+    - name: Install dependencies (Windows)
+      if: ${{ inputs.os == 'windows-latest' || inputs.os == 'windows-2019' }}
+      shell: powershell
+      run: npm ci --foreground-scripts

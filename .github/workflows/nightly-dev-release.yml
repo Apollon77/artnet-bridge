@@ -1,0 +1,124 @@
+# This workflow automatically generates nightly release PRs if there were changes to the code
+name: Publish nightly dev releases
+
+on:
+  schedule:
+    - cron: 30 2 * * * # Every day at 02:30
+  workflow_dispatch: # Manually on demand
+    inputs:
+      versionBump:
+        description: 'Type of version bump'
+        required: true
+        default: 'prerelease'
+        type: choice
+        options:
+          - prerelease
+          - prepatch
+          - preminor
+          - premajor
+jobs:
+  test-and-release:
+    if: github.repository == 'Apollon77/artnet-bridge'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Fetch the history, or this action won't work
+
+    - name: Detect changes (git)
+      id: changes
+      run: |
+        # ===============================
+        # Detect changes using git
+        # ===============================
+
+        LAST_TAG=$(git describe --abbrev=0 --tags)
+        echo "Checking for changes since last tag $LAST_TAG"
+
+        # Figure out if anything changed in the package directories
+        CHANGES=$(git diff "$LAST_TAG" --name-only | grep -E "^packages\/" || true)
+        if [ -z "$CHANGES" ] ; then
+          echo "No package changes since latest version, aborting..."
+          echo "result=unchanged" >> $GITHUB_OUTPUT
+        else
+          echo "result=ok" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Prepare testing environment
+      if: steps.changes.outputs.result == 'ok'
+      uses: ./.github/actions/prepare-env
+
+    - name: Execute tests
+      if: steps.changes.outputs.result == 'ok'
+      run: npm run test
+
+    - name: Determine the version bump
+      if: steps.changes.outputs.result == 'ok'
+      env:
+        VERSION_BUMP: ${{ inputs.versionBump }}
+      id: version
+      uses: actions/github-script@v8
+      with:
+        result-encoding: string
+        script: |
+          const semver = require("semver");
+          const fs = require("fs");
+          const now = new Date();
+          const today = new Date(now.getTime() - now.getTimezoneOffset()*60000);
+          const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
+          const sha = require("child_process").execSync("git rev-parse --short HEAD").toString("utf8").trim();
+
+          const prevVersion = fs.readFileSync(`${process.env.GITHUB_WORKSPACE}/version.txt`, "utf8");
+
+          const parsed = semver.parse(prevVersion);
+          const prereleaseIdentifier = parsed.prerelease[0] || "alpha";
+
+          for (let i = 1; i < parsed.prerelease.length; i++) {
+            const part = parsed.prerelease[i];
+            if (typeof part === "number") {
+              continue;
+            }
+            // Parse stuff like `8-20210909-001a711c` back to `8`
+            const numeric = parseInt(part);
+            if (!Number.isNaN(numeric)) {
+              parsed.prerelease[i] = numeric;
+            }
+          }
+
+          // Figure out the next version
+          const versionBump = process.env.VERSION_BUMP || "prerelease";
+          return `${semver.inc(parsed, versionBump, prereleaseIdentifier)}-${dateStr}-${sha}`;
+
+    - name: Bump version locally
+      if: steps.changes.outputs.result == 'ok'
+      env:
+        VERSION: ${{ steps.version.outputs.result }}
+      run: |
+        git config --global user.email "github-automation@fischer-ka.de"
+        git config --global user.name "Github Action"
+
+        npm run version -- --set ${VERSION}
+        git add version.txt
+        git commit -m "v${VERSION}"
+
+    - name: Create Pull Request
+      if: steps.changes.outputs.result == 'ok'
+      id: cpr
+      uses: peter-evans/create-pull-request@v8
+      with:
+        token: ${{ secrets.PR_TOKEN }}
+        commit-message: "[NIGHTLY DEV RELEASE] ${{ steps.version.outputs.result }}"
+        committer: Automator77 <github-automation@fischer-ka.de>
+        author: Automator77 <github-automation@fischer-ka.de>
+        signoff: false
+        branch: nightly-release
+        delete-branch: true
+        title: "[NIGHTLY DEV RELEASE] ${{ steps.version.outputs.result }}"
+        body: |
+          Update version by nightly dev release
+        labels: |
+          automated-npm-release
+        assignees: Automator77
+        draft: false
