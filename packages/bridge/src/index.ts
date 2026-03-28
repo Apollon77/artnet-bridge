@@ -17,3 +17,5 @@ export {
   type BridgeRuntimeStatus,
   type ProtocolAdapterFactory,
 } from "./BridgeOrchestrator.js";
+export { WebServer, type WebServerOptions } from "./web/WebServer.js";
+export { WebSocketHandler } from "./web/WebSocketHandler.js";
