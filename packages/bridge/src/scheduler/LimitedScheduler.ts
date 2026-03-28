@@ -1,0 +1,61 @@
+import type { EntityValue } from "@artnet-bridge/protocol";
+
+export class LimitedScheduler {
+  private readonly dirtySet = new Set<string>();
+  private readonly valueMap = new Map<string, EntityValue>();
+  private readonly onDispatch: (entityId: string, value: EntityValue) => Promise<void>;
+  private readonly intervalMs: number;
+  private timer: ReturnType<typeof setInterval> | undefined;
+  private dispatching = false;
+
+  constructor(
+    ratePerSec: number,
+    onDispatch: (entityId: string, value: EntityValue) => Promise<void>,
+  ) {
+    this.intervalMs = Math.round(1000 / ratePerSec);
+    this.onDispatch = onDispatch;
+  }
+
+  update(entityId: string, value: EntityValue): void {
+    this.valueMap.set(entityId, value);
+    if (!this.dirtySet.has(entityId)) {
+      this.dirtySet.add(entityId); // appended at end (insertion order)
+    }
+  }
+
+  start(): void {
+    if (this.timer) return;
+    this.timer = setInterval(() => {
+      void this.tick();
+    }, this.intervalMs);
+  }
+
+  stop(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = undefined;
+    }
+  }
+
+  /** Exposed for testing. Dispatches the most stale entity. */
+  async tick(): Promise<void> {
+    // Skip if previous dispatch still in progress
+    if (this.dispatching) return;
+    if (this.dirtySet.size === 0) return;
+
+    // Take the first (most stale) entity
+    const entityId = this.dirtySet.values().next().value;
+    if (entityId === undefined) return;
+    this.dirtySet.delete(entityId);
+
+    const value = this.valueMap.get(entityId);
+    if (!value) return;
+
+    this.dispatching = true;
+    try {
+      await this.onDispatch(entityId, value);
+    } finally {
+      this.dispatching = false;
+    }
+  }
+}
