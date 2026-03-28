@@ -9,6 +9,12 @@
         },
         {
             "path": "packages/protocol"
+        },
+        {
+            "path": "packages/protocol-hue"
+        },
+        {
+            "path": "packages/bridge"
         }
     ]
 }
