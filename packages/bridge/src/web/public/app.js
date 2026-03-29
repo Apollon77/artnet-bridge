@@ -336,18 +336,23 @@ function closeDetail(bridgeId, detailDiv, toggleBtn) {
 }
 
 async function loadEntities(bridgeId) {
-  const root = document.getElementById("entities-" + bridgeId);
-  if (!root) return;
   try {
     const entities = await api(
       "GET",
       "/api/bridges/" + encodeURIComponent(bridgeId) + "/resources",
     );
     bridgeEntitiesCache.set(bridgeId, entities);
-    renderEntities(bridgeId, entities, null);
+    // Render into the entity table if it exists (detail panel may not be open)
+    const root = document.getElementById("entities-" + bridgeId);
+    if (root) {
+      renderEntities(bridgeId, entities, null);
+    }
   } catch {
-    root.textContent = "Could not load entities.";
-    root.className = "muted";
+    const root = document.getElementById("entities-" + bridgeId);
+    if (root) {
+      root.textContent = "Could not load entities.";
+      root.className = "muted";
+    }
   }
 }
 
