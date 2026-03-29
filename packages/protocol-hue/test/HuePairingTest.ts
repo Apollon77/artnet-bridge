@@ -20,6 +20,23 @@ function failingClient(errorMessage: string): CreateClient {
   });
 }
 
+/** Client that fails N times with "link button" then succeeds */
+function eventuallySucceedsClient(
+  failCount: number,
+  response: { username: string; clientkey: string },
+): CreateClient {
+  let attempts = 0;
+  return (_host: string) => ({
+    createUser: async (_appName: string, _instanceName: string) => {
+      attempts++;
+      if (attempts <= failCount) {
+        throw new Error("link button not pressed");
+      }
+      return response;
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -31,7 +48,9 @@ describe("pairWithBridge", () => {
       clientkey: "AABBCCDDEEFF00112233445566778899",
     });
 
-    const result = await pairWithBridge("192.168.1.42", "artnet-bridge", "cli", factory);
+    const result = await pairWithBridge("192.168.1.42", "artnet-bridge", "cli", {
+      createClient: factory,
+    });
 
     assert.equal(result.success, true);
     assert.ok(result.connection);
@@ -41,20 +60,42 @@ describe("pairWithBridge", () => {
     assert.equal(result.error, undefined);
   });
 
-  it("should return failure when link button not pressed", async () => {
-    const factory = failingClient("link button not pressed");
+  it("should retry and succeed when link button pressed after initial failures", async () => {
+    const factory = eventuallySucceedsClient(2, {
+      username: "user-after-retry",
+      clientkey: "AABB",
+    });
 
-    const result = await pairWithBridge("192.168.1.42", "artnet-bridge", "cli", factory);
+    const result = await pairWithBridge("192.168.1.42", "artnet-bridge", "cli", {
+      createClient: factory,
+      timeoutSec: 10,
+      pollIntervalMs: 50, // fast polling for test
+    });
 
-    assert.equal(result.success, false);
-    assert.equal(result.error, "link button not pressed");
-    assert.equal(result.connection, undefined);
+    assert.equal(result.success, true);
+    assert.ok(result.connection);
+    assert.equal(result.connection.username, "user-after-retry");
   });
 
-  it("should return failure on network error", async () => {
+  it("should timeout when link button is never pressed", async () => {
+    const factory = failingClient("link button not pressed");
+
+    const result = await pairWithBridge("192.168.1.42", "artnet-bridge", "cli", {
+      createClient: factory,
+      timeoutSec: 1,
+      pollIntervalMs: 200,
+    });
+
+    assert.equal(result.success, false);
+    assert.ok(result.error?.includes("Timeout"));
+  });
+
+  it("should return failure immediately on network error (no retry)", async () => {
     const factory = failingClient("connect ECONNREFUSED 192.168.1.42:443");
 
-    const result = await pairWithBridge("192.168.1.42", "artnet-bridge", "cli", factory);
+    const result = await pairWithBridge("192.168.1.42", "artnet-bridge", "cli", {
+      createClient: factory,
+    });
 
     assert.equal(result.success, false);
     assert.ok(result.error?.includes("ECONNREFUSED"));
@@ -70,7 +111,7 @@ describe("pairWithBridge", () => {
       };
     };
 
-    await pairWithBridge("10.0.0.5", "app", "inst", factory);
+    await pairWithBridge("10.0.0.5", "app", "inst", { createClient: factory });
 
     assert.equal(capturedHost, "10.0.0.5");
   });

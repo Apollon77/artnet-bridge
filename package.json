@@ -31,7 +31,7 @@
         "format": "oxfmt \"packages/**/*.ts\"",
         "format-verify": "oxfmt --check \"packages/**/*.ts\"",
         "test": "mocha",
-        "server": "node --enable-source-maps packages/bridge/dist/esm/cli.js"
+        "bridge": "node --enable-source-maps packages/bridge/dist/esm/cli.js"
     },
     "devDependencies": {
         "@types/mocha": "^10.0.10",

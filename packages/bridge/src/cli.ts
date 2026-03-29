@@ -349,32 +349,54 @@ async function handlePair(
   switch (protocol) {
     case "hue": {
       const { pairWithBridge } = await import("@artnet-bridge/protocol-hue");
-      console.log(`Pairing with Hue bridge at ${host}... Press the link button now.`);
-      const result = await pairWithBridge(host, "artnet-bridge", "default");
+      console.log(
+        `Pairing with Hue bridge at ${host}...\nPress the link button on your bridge now (waiting up to 30 seconds)...`,
+      );
+      const result = await pairWithBridge(host, "artnet-bridge", "default", {
+        timeoutSec: 30,
+        pollIntervalMs: 2000,
+      });
       if (result.success && result.connection) {
         const conn = result.connection;
-        if (typeof conn.username === "string") {
-          console.log("Pairing successful!");
+        if (typeof conn.username !== "string") {
+          console.error("Pairing succeeded but no username was returned. Unexpected.");
+          break;
+        }
+        const hasClientKey = typeof conn.clientkey === "string" && conn.clientkey.length > 0;
 
-          // Auto-save bridge entry to config
-          const bridgeId = `hue-${host.replace(/\./g, "-")}`;
-          const config = configManager.load();
+        console.log("Pairing successful!");
 
-          if (config.bridges.some((b) => b.id === bridgeId)) {
-            console.log(`Bridge ${bridgeId} already exists in config — skipping auto-add.`);
-          } else {
-            config.bridges.push({
-              id: bridgeId,
-              name: `Hue @ ${host}`,
-              protocol: "hue",
-              connection: result.connection,
-              universe: 0,
-              channelMappings: [],
-            });
-            configManager.save(config);
-            console.log(`Bridge '${bridgeId}' added to config.`);
-            console.log("Configure universe and channel mappings to start using it.");
+        // Auto-save bridge entry to config
+        const bridgeId = `hue-${host.replace(/\./g, "-")}`;
+        const config = configManager.load();
+
+        if (config.bridges.some((b) => b.id === bridgeId)) {
+          console.log(`Bridge ${bridgeId} already exists in config — credentials updated.`);
+          const existing = config.bridges.find((b) => b.id === bridgeId);
+          if (existing) {
+            existing.connection = result.connection;
           }
+        } else {
+          config.bridges.push({
+            id: bridgeId,
+            name: `Hue @ ${host}`,
+            protocol: "hue",
+            connection: result.connection,
+            universe: 0,
+            channelMappings: [],
+          });
+          console.log(`Bridge '${bridgeId}' added to config.`);
+        }
+        configManager.save(config);
+
+        console.log("\nNext steps:");
+        console.log("  1. Configure ArtNet universe and channel mappings");
+        if (hasClientKey) {
+          console.log("  2. Optionally select an entertainment area for realtime streaming");
+          console.log(`     (use the web UI at http://localhost:8080/protocol/hue/ or config set)`);
+        } else {
+          console.log("  Note: No client key returned — entertainment streaming unavailable.");
+          console.log("  Your bridge firmware may need updating for entertainment API support.");
         }
       } else {
         console.error(`Pairing failed: ${result.error}`);
