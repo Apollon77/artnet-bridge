@@ -9,15 +9,29 @@
         "build": "artnet-build",
         "build-clean": "artnet-build --clean"
     },
-    "engines": { "node": ">=22.13.0" },
-    "repository": { "type": "git", "url": "git+https://github.com/Apollon77/artnet-bridge.git" },
+    "engines": {
+        "node": ">=22.13.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Apollon77/artnet-bridge.git"
+    },
     "author": "Ingo Fischer",
     "license": "MIT",
-    "bugs": { "url": "https://github.com/Apollon77/artnet-bridge/issues" },
+    "bugs": {
+        "url": "https://github.com/Apollon77/artnet-bridge/issues"
+    },
     "homepage": "https://github.com/Apollon77/artnet-bridge",
     "devDependencies": {
         "@types/node": "^22.0.0"
     },
-    "files": ["dist/**/*", "src/**/*", "LICENSE", "README.md"],
-    "publishConfig": { "access": "public" }
+    "files": [
+        "dist/**/*",
+        "src/**/*",
+        "LICENSE",
+        "README.md"
+    ],
+    "publishConfig": {
+        "access": "public"
+    }
 }
