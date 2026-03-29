@@ -102,6 +102,8 @@ h1 span { color: var(--accent); }
   font-size: 0.85rem;
 }
 
+.item-uuid { display: block; font-size: 0.7rem; color: var(--muted); font-family: var(--mono); margin-top: 2px; opacity: 0.7; }
+
 .btn {
   display: inline-block;
   padding: 8px 20px;
@@ -240,7 +242,10 @@ h1 span { color: var(--accent); }
           });
 
           li.appendChild(radio);
-          li.appendChild(el("span", "ea-name", ea.metadata ? ea.metadata.name : ea.id));
+          var eaNameWrap = el("span", "ea-name");
+          eaNameWrap.appendChild(document.createTextNode(ea.metadata ? ea.metadata.name : ea.id));
+          eaNameWrap.appendChild(el("span", "item-uuid", " " + ea.id));
+          li.appendChild(eaNameWrap);
 
           var channelCount = ea.channels ? ea.channels.length : 0;
           li.appendChild(el("span", "ea-channels", channelCount + " channel" + (channelCount !== 1 ? "s" : "")));
@@ -248,18 +253,21 @@ h1 span { color: var(--accent); }
 
           // Show lights in this entertainment area
           if (ea.channels && ea.channels.length > 0) {
-            var lightIds = new Set();
+            var lightsDiv = el("div", "ea-lights");
+            lightsDiv.appendChild(document.createTextNode("Lights: "));
+            var first = true;
             ea.channels.forEach(function(ch) {
-              ch.members.forEach(function(m) { lightIds.add(m.service.rid); });
-            });
-            if (lightIds.size > 0) {
-              var lightNames = [];
-              lightIds.forEach(function(lid) {
-                var found = lights.find(function(l) { return l.id === lid; });
-                lightNames.push(found ? found.metadata.name : lid);
+              ch.members.forEach(function(m) {
+                if (!first) lightsDiv.appendChild(document.createTextNode(", "));
+                first = false;
+                var found = lights.find(function(l) { return l.id === m.service.rid; });
+                var name = found ? found.metadata.name : "Unknown";
+                var nameSpan = el("span", null, name);
+                lightsDiv.appendChild(nameSpan);
+                lightsDiv.appendChild(el("span", "item-uuid", " (" + m.service.rid + ")"));
               });
-              li.appendChild(el("div", "ea-lights", "Lights: " + lightNames.join(", ")));
-            }
+            });
+            li.appendChild(lightsDiv);
           }
 
           listEl.appendChild(li);
@@ -317,8 +325,9 @@ h1 span { color: var(--accent); }
         });
       });
       lights.forEach(function(light) {
-        var chip = el("div", "light-chip" + (entLightIds.has(light.id) ? " in-ea" : ""), light.metadata.name);
-        chip.title = light.id;
+        var chip = el("div", "light-chip" + (entLightIds.has(light.id) ? " in-ea" : ""));
+        chip.appendChild(document.createTextNode(light.metadata.name));
+        chip.appendChild(el("span", "item-uuid", light.id));
         lightGrid.appendChild(chip);
       });
       section.appendChild(lightGrid);
@@ -328,8 +337,9 @@ h1 span { color: var(--accent); }
         section.appendChild(el("div", "section-label", "Rooms"));
         var roomList = el("ul", "resource-list");
         rooms.forEach(function(room) {
-          var li = el("li", "resource-item", room.metadata.name);
-          li.title = room.id;
+          var li = el("li", "resource-item");
+          li.appendChild(document.createTextNode(room.metadata.name));
+          li.appendChild(el("span", "item-uuid", room.id));
           roomList.appendChild(li);
         });
         section.appendChild(roomList);
@@ -340,8 +350,9 @@ h1 span { color: var(--accent); }
         section.appendChild(el("div", "section-label", "Zones"));
         var zoneList = el("ul", "resource-list");
         zones.forEach(function(zone) {
-          var li = el("li", "resource-item", zone.metadata.name);
-          li.title = zone.id;
+          var li = el("li", "resource-item");
+          li.appendChild(document.createTextNode(zone.metadata.name));
+          li.appendChild(el("span", "item-uuid", zone.id));
           zoneList.appendChild(li);
         });
         section.appendChild(zoneList);
@@ -352,8 +363,9 @@ h1 span { color: var(--accent); }
         section.appendChild(el("div", "section-label", "Scenes"));
         var sceneList = el("ul", "resource-list");
         scenes.forEach(function(scene) {
-          var li = el("li", "resource-item", scene.metadata.name);
-          li.title = scene.id;
+          var li = el("li", "resource-item");
+          li.appendChild(document.createTextNode(scene.metadata.name));
+          li.appendChild(el("span", "item-uuid", scene.id));
           sceneList.appendChild(li);
         });
         section.appendChild(sceneList);
