@@ -192,7 +192,7 @@ async function renderBridgeCards() {
       const link = document.createElement("a");
       link.className = "btn small";
       link.href = "/protocol/hue/";
-      link.target = "_blank";
+      // Opens in same tab — Hue config page has a "Back" link
       link.textContent = "Hue UI";
       actions.appendChild(link);
     }
