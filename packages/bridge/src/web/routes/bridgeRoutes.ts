@@ -10,12 +10,17 @@ export function createBridgeRoutes(
   const router = Router();
 
   router.get("/discover", async (_req, res) => {
-    const results = [];
-    for (const adapter of adapters) {
-      const discovered = await adapter.discover();
-      results.push(...discovered);
+    try {
+      const results = [];
+      for (const adapter of adapters) {
+        const discovered = await adapter.discover();
+        results.push(...discovered);
+      }
+      res.json(results);
+    } catch (err) {
+      console.error("Error discovering bridges:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
-    res.json(results);
   });
 
   router.post("/pair", async (req, res) => {
@@ -60,20 +65,25 @@ export function createBridgeRoutes(
   });
 
   router.get("/:id/resources", async (req, res) => {
-    const bridgeId = req.params.id;
-    if (typeof bridgeId !== "string" || bridgeId.length === 0) {
-      res.status(400).json({ error: "Bridge ID must be a non-empty string" });
-      return;
-    }
-    for (const adapter of adapters) {
-      const bridges = await adapter.getBridges();
-      const bridge = bridges.find((b) => b.id === bridgeId);
-      if (bridge) {
-        res.json(bridge.entities);
+    try {
+      const bridgeId = req.params.id;
+      if (typeof bridgeId !== "string" || bridgeId.length === 0) {
+        res.status(400).json({ error: "Bridge ID must be a non-empty string" });
         return;
       }
+      for (const adapter of adapters) {
+        const bridges = await adapter.getBridges();
+        const bridge = bridges.find((b) => b.id === bridgeId);
+        if (bridge) {
+          res.json(bridge.entities);
+          return;
+        }
+      }
+      res.status(404).json({ error: `Bridge not found: ${bridgeId}` });
+    } catch (err) {
+      console.error("Error getting bridge resources:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
-    res.status(404).json({ error: `Bridge not found: ${bridgeId}` });
   });
 
   router.post("/:id/test", async (req, res) => {

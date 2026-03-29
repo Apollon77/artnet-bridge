@@ -364,15 +364,19 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         state.entertainmentRetryTimer = null;
       }
       if (state.dtlsStream) {
-        await state.dtlsStream.close();
+        try {
+          await state.dtlsStream.close();
+        } catch (e) {
+          console.error(`DTLS close error for bridge ${state.config.id}:`, e);
+        }
         state.dtlsStream = null;
         state.streaming = false;
       }
       if (state.entertainmentConfig) {
         try {
           await state.client.stopEntertainment(state.entertainmentConfig.id);
-        } catch {
-          // Best-effort stop
+        } catch (e) {
+          console.error(`Failed to stop entertainment for bridge ${state.config.id}:`, e);
         }
       }
       state.connected = false;
@@ -614,7 +618,9 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         // Start a periodic retry every 30 seconds
         if (state.entertainmentRetryTimer === null) {
           state.entertainmentRetryTimer = setInterval(() => {
-            void this.retryEntertainmentStart(state, client, bridgeConfig, entertainmentConfig);
+            this.retryEntertainmentStart(state, client, bridgeConfig, entertainmentConfig).catch(
+              (err) => console.warn(`[Hue] Entertainment retry error on ${bridgeConfig.id}:`, err),
+            );
           }, 30_000);
         }
         return;
@@ -668,8 +674,8 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         state.entertainmentRetryTimer = null;
       }
       console.info(`[Hue] Entertainment streaming recovered on bridge ${bridgeConfig.id}`);
-    } catch {
-      // Still failing — timer will fire again
+    } catch (err) {
+      console.warn(`[Hue] Entertainment retry still failing on ${bridgeConfig.id}:`, err);
     }
   }
 
@@ -683,7 +689,9 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     }
 
     state.networkRetryTimer = setInterval(() => {
-      void this.attemptNetworkRecovery(state, bridgeId);
+      this.attemptNetworkRecovery(state, bridgeId).catch((err) =>
+        console.warn(`[Hue] Network recovery error on ${bridgeId}:`, err),
+      );
     }, 30_000);
   }
 
@@ -698,8 +706,8 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         state.networkRetryTimer = null;
       }
       console.info(`[Hue] Bridge ${bridgeId} reconnected`);
-    } catch {
-      // Still unreachable — timer will fire again
+    } catch (err) {
+      console.warn(`[Hue] Bridge ${bridgeId} still unreachable:`, err);
     }
   }
 

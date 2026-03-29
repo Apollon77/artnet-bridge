@@ -106,6 +106,9 @@ function httpsRequest(options: {
         });
       },
     );
+    req.setTimeout(10000, () => {
+      req.destroy(new Error("Request timeout"));
+    });
     req.on("error", reject);
     if (options.body !== undefined) {
       req.write(options.body);

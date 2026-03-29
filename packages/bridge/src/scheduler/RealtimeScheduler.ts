@@ -20,7 +20,7 @@ export class RealtimeScheduler {
   start(): void {
     if (this.timer) return;
     this.timer = setInterval(() => {
-      void this.tick();
+      this.tick().catch((err) => console.error("Scheduler tick error:", err));
     }, this.intervalMs);
   }
 

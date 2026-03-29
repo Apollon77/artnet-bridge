@@ -100,6 +100,7 @@ export class BridgeOrchestrator {
     this.createSchedulers();
 
     // 5. Start ArtNet listener
+    this.artnet.on("error", (err) => console.error("ArtNet error:", err));
     this.artnet.on("dmx", this.dmxHandler);
     await this.artnet.start();
 
@@ -123,11 +124,19 @@ export class BridgeOrchestrator {
 
     // Remove listener and stop ArtNet
     this.artnet.off("dmx", this.dmxHandler);
-    await this.artnet.stop();
+    try {
+      await this.artnet.stop();
+    } catch (e) {
+      console.error("ArtNet stop error:", e);
+    }
 
     // Disconnect adapters
     for (const adapter of this.adapters) {
-      await adapter.disconnect();
+      try {
+        await adapter.disconnect();
+      } catch (e) {
+        console.error(`Adapter ${adapter.id} disconnect error:`, e);
+      }
     }
 
     // Clear state

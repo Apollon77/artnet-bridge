@@ -71,6 +71,14 @@ Options:
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  process.on("unhandledRejection", (reason) => {
+    console.error("Unhandled rejection:", reason);
+  });
+  process.on("uncaughtException", (err) => {
+    console.error("Uncaught exception:", err);
+    process.exit(1);
+  });
+
   const args = parseArgs(process.argv.slice(2));
   const configManager = new ConfigManager(args.configPath);
 
@@ -122,14 +130,35 @@ async function main(): Promise<void> {
   let webServer: WebServer | undefined;
 
   // Graceful shutdown
+  let shuttingDown = false;
   const shutdown = async (): Promise<void> => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log("\nShutting down...");
-    await webServer?.stop();
-    await orchestrator.stop();
+    try {
+      await webServer?.stop();
+    } catch (e) {
+      console.error("Web server stop error:", e);
+    }
+    try {
+      await orchestrator.stop();
+    } catch (e) {
+      console.error("Orchestrator stop error:", e);
+    }
     process.exit(0);
   };
-  process.on("SIGINT", () => void shutdown());
-  process.on("SIGTERM", () => void shutdown());
+  process.on("SIGINT", () => {
+    shutdown().catch((err) => {
+      console.error("Shutdown error:", err);
+      process.exit(1);
+    });
+  });
+  process.on("SIGTERM", () => {
+    shutdown().catch((err) => {
+      console.error("Shutdown error:", err);
+      process.exit(1);
+    });
+  });
 
   // Start
   try {
@@ -257,4 +286,7 @@ async function handlePair(
   }
 }
 
-void main();
+main().catch((err) => {
+  console.error("Fatal:", err);
+  process.exit(1);
+});

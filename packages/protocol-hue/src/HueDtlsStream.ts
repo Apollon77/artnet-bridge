@@ -241,9 +241,14 @@ export class HueDtlsStream {
     const socket = this.socket;
     if (socket) {
       this.socket = null;
-      await new Promise<void>((resolve) => {
-        socket.close(() => resolve());
-      });
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          socket.close(() => resolve());
+        }),
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 5000);
+        }),
+      ]);
     }
   }
 
@@ -315,7 +320,7 @@ export class HueDtlsStream {
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      void this.attemptReconnect();
+      this.attemptReconnect().catch((err) => console.error("DTLS reconnect error:", err));
     }, delay);
   }
 
@@ -332,8 +337,9 @@ export class HueDtlsStream {
       }
 
       await this.openSocket();
-    } catch {
+    } catch (err) {
       // Reconnection failed — try again with increased backoff
+      console.warn(`DTLS reconnect attempt ${String(this.reconnectAttempt)} failed:`, err);
       if (!this._closed) {
         this._reconnecting = false;
         this.scheduleReconnect();
@@ -356,6 +362,10 @@ export class HueDtlsStream {
     }
 
     const packet = buildHueStreamPacket(this.entertainmentConfigId, updates);
-    this.socket.send(packet);
+    try {
+      this.socket.send(packet);
+    } catch (err) {
+      console.error("DTLS socket.send error:", err);
+    }
   }
 }

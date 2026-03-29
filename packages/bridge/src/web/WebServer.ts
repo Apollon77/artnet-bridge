@@ -58,6 +58,7 @@ export class WebServer {
 
     // WebSocket server attached to the HTTP server
     this.wss = new WebSocketServer({ server: this.httpServer, path: "/ws" });
+    this.wss.on("error", (err) => console.error("WebSocket server error:", err));
     this.wsHandler = new WebSocketHandler(this.wss, options.orchestrator);
   }
 
@@ -86,13 +87,12 @@ export class WebServer {
   async stop(): Promise<void> {
     this.wsHandler.stop();
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       this.httpServer.close((err) => {
         if (err) {
-          reject(err);
-        } else {
-          resolve();
+          console.error("HTTP server close error:", err);
         }
+        resolve();
       });
     });
   }

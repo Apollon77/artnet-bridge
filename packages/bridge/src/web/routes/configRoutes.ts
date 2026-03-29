@@ -6,29 +6,39 @@ export function createConfigRoutes(configManager: ConfigManager): Router {
   const router = Router();
 
   router.get("/", async (_req, res) => {
-    const config = configManager.load();
-    res.json(config);
+    try {
+      const config = configManager.load();
+      res.json(config);
+    } catch (err) {
+      console.error("Error loading config:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
   router.put("/", async (req, res) => {
-    const body: unknown = req.body;
-    const shapeErrors = validateAppConfigShape(body);
-    if (shapeErrors.length > 0) {
-      res.status(400).json({ errors: shapeErrors });
-      return;
+    try {
+      const body: unknown = req.body;
+      const shapeErrors = validateAppConfigShape(body);
+      if (shapeErrors.length > 0) {
+        res.status(400).json({ errors: shapeErrors });
+        return;
+      }
+
+      // Shape validated — safe to treat as AppConfig
+      const config = body as AppConfig;
+
+      const errors = configManager.validate(config);
+      if (errors.length > 0) {
+        res.status(400).json({ errors });
+        return;
+      }
+
+      configManager.save(config);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Error saving config:", err);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    // Shape validated — safe to treat as AppConfig
-    const config = body as AppConfig;
-
-    const errors = configManager.validate(config);
-    if (errors.length > 0) {
-      res.status(400).json({ errors });
-      return;
-    }
-
-    configManager.save(config);
-    res.json({ success: true });
   });
 
   return router;
