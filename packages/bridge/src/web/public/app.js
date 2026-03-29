@@ -269,8 +269,13 @@ function openDetail(bridgeId, detailDiv, toggleBtn) {
     testRow.appendChild(
       btn(label, "small", async () => {
         try {
-          await api("POST", "/api/bridges/" + encodeURIComponent(bridgeId) + "/test", { r, g, b });
-          toast(testStatusEl, "ok", "Sent (" + r + ", " + g + ", " + b + ")");
+          var entityIds = getCheckedEntityIds(bridgeId);
+          var payload = { color: [r, g, b] };
+          if (entityIds.length > 0) {
+            payload.entityIds = entityIds;
+          }
+          await api("POST", "/api/bridges/" + encodeURIComponent(bridgeId) + "/test", payload);
+          toast(testStatusEl, "ok", "Sent (" + r + ", " + g + ", " + b + ") to " + (entityIds.length || "all") + " entities");
         } catch (e) {
           toast(testStatusEl, "err", e.message);
         }
@@ -311,6 +316,33 @@ async function loadEntities(bridgeId) {
   }
 }
 
+/** Track which entity checkboxes are checked for test controls */
+const testSelections = new Map();
+
+function isTestableEntity(entity) {
+  var cat = entity.category || "";
+  var mode = entity.channelLayout?.type || "";
+  return cat !== "scene-selector" && mode !== "scene-selector";
+}
+
+function getCheckedEntityIds(bridgeId) {
+  var sel = testSelections.get(bridgeId);
+  if (!sel) return [];
+  var ids = [];
+  sel.forEach(function (checked, eid) {
+    if (checked) ids.push(eid);
+  });
+  return ids;
+}
+
+function fmtDmxMapping(mapping) {
+  if (!mapping) return null;
+  var range = mapping.dmxStart === mapping.dmxEnd
+    ? String(mapping.dmxStart)
+    : mapping.dmxStart + "-" + mapping.dmxEnd;
+  return range + " (" + mapping.channelMode + ")";
+}
+
 function renderEntities(bridgeId, entities, liveData) {
   const root = document.getElementById("entities-" + bridgeId);
   if (!root) return;
@@ -325,10 +357,20 @@ function renderEntities(bridgeId, entities, liveData) {
 
   root.className = "";
 
+  // Initialise test selections for this bridge if not yet done
+  if (!testSelections.has(bridgeId)) {
+    var sel = new Map();
+    for (var i = 0; i < entities.length; i++) {
+      sel.set(entities[i].id, isTestableEntity(entities[i]));
+    }
+    testSelections.set(bridgeId, sel);
+  }
+  var selections = testSelections.get(bridgeId);
+
   const table = document.createElement("table");
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  for (const h of ["Entity", "Type", "Mode", "Color", "Last update"]) {
+  for (const h of ["", "Entity", "Type", "Mode", "DMX", "Color", "Last update"]) {
     const th = document.createElement("th");
     th.textContent = h;
     headRow.appendChild(th);
@@ -339,6 +381,19 @@ function renderEntities(bridgeId, entities, liveData) {
   const tbody = document.createElement("tbody");
   for (const e of entities) {
     const tr = document.createElement("tr");
+
+    // Checkbox for test selection
+    const tdCheck = document.createElement("td");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = selections.get(e.id) ?? isTestableEntity(e);
+    cb.addEventListener("change", (function (eid) {
+      return function () {
+        selections.set(eid, this.checked);
+      };
+    })(e.id));
+    tdCheck.appendChild(cb);
+    tr.appendChild(tdCheck);
 
     // Name
     const tdName = document.createElement("td");
@@ -355,6 +410,19 @@ function renderEntities(bridgeId, entities, liveData) {
     const modeClass = e.controlMode === "realtime" ? "realtime" : "limited";
     tdMode.appendChild(badge(e.controlMode, modeClass));
     tr.appendChild(tdMode);
+
+    // DMX address
+    const tdDmx = document.createElement("td");
+    var dmxText = fmtDmxMapping(e.dmxMapping);
+    if (dmxText) {
+      tdDmx.textContent = dmxText;
+    } else {
+      var unmapped = document.createElement("span");
+      unmapped.className = "muted";
+      unmapped.textContent = "(unmapped)";
+      tdDmx.appendChild(unmapped);
+    }
+    tr.appendChild(tdDmx);
 
     // Color swatch
     const tdColor = document.createElement("td");
@@ -430,6 +498,17 @@ function connectWs(bridgeId) {
       wsStatusEl.appendChild(dot);
       wsStatusEl.appendChild(document.createTextNode("Live"));
     }
+    // Re-enable detail panel if it was greyed out from a previous disconnect
+    const card = document.querySelector(
+      ".bridge-card[data-bridge-id='" + CSS.escape(bridgeId) + "']",
+    );
+    if (card) {
+      const detail = card.querySelector(".bridge-detail");
+      if (detail) {
+        detail.style.opacity = "";
+        detail.style.pointerEvents = "";
+      }
+    }
   });
 
   ws.addEventListener("message", (event) => {
@@ -476,6 +555,26 @@ function connectWs(bridgeId) {
 
   ws.addEventListener("close", () => {
     wsConnections.delete(bridgeId);
+    // Grey out the detail panel to indicate stale data
+    const statusEl = document.getElementById("ws-status-" + bridgeId);
+    if (statusEl) {
+      statusEl.textContent = "";
+      const dot = document.createElement("span");
+      dot.className = "dot disconnected";
+      statusEl.appendChild(dot);
+      statusEl.appendChild(document.createTextNode(" Disconnected"));
+    }
+    // Disable test buttons and checkboxes
+    const card = document.querySelector(
+      ".bridge-card[data-bridge-id='" + CSS.escape(bridgeId) + "']",
+    );
+    if (card) {
+      const detail = card.querySelector(".bridge-detail");
+      if (detail) {
+        detail.style.opacity = "0.5";
+        detail.style.pointerEvents = "none";
+      }
+    }
   });
 
   wsConnections.set(bridgeId, ws);

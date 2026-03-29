@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { computeDmxEnd } from "@artnet-bridge/protocol";
 import type { ProtocolAdapter, ProtocolBridge } from "@artnet-bridge/protocol";
 import type { ConfigManager } from "../../config/ConfigManager.js";
 import type { BridgeConfig } from "../../config/ConfigSchema.js";
@@ -75,7 +76,27 @@ export function createBridgeRoutes(
         const bridges = await adapter.getBridges();
         const bridge = bridges.find((b) => b.id === bridgeId);
         if (bridge) {
-          res.json(bridge.entities);
+          // Look up channel mappings from config
+          const bridgeConfig = configManager
+            ? configManager.load().bridges.find((b) => b.id === bridgeId)
+            : undefined;
+          const mappings = bridgeConfig?.channelMappings ?? [];
+
+          const augmented = bridge.entities.map((entity) => {
+            const mapping = mappings.find((m) => m.targetId === entity.id);
+            return {
+              ...entity,
+              dmxMapping: mapping
+                ? {
+                    dmxStart: mapping.dmxStart,
+                    channelMode: mapping.channelMode,
+                    dmxEnd: computeDmxEnd(mapping),
+                  }
+                : null,
+            };
+          });
+
+          res.json(augmented);
           return;
         }
       }
@@ -101,6 +122,9 @@ export function createBridgeRoutes(
 
     const [r, g, b] = body.color;
 
+    // Optional: only test specific entities
+    const entityIds = hasStringArray(body, "entityIds") ? body.entityIds : null;
+
     try {
       const result = await findBridgeAndAdapter(adapters, bridgeId);
       if (!result) {
@@ -110,9 +134,14 @@ export function createBridgeRoutes(
 
       const { adapter, bridge } = result;
 
+      // Filter to selected entities if provided
+      const selectedEntities = entityIds
+        ? bridge.entities.filter((e) => entityIds.includes(e.id))
+        : bridge.entities;
+
       // Try realtime entities first, then limited
-      const realtimeEntities = bridge.entities.filter((e) => e.controlMode === "realtime");
-      const limitedEntities = bridge.entities.filter(
+      const realtimeEntities = selectedEntities.filter((e) => e.controlMode === "realtime");
+      const limitedEntities = selectedEntities.filter(
         (e) => e.controlMode === "limited" && e.category === "light",
       );
 
@@ -198,6 +227,15 @@ function hasObjectProp<K extends string>(
     typeof (obj as Record<string, unknown>)[key] === "object" &&
     (obj as Record<string, unknown>)[key] !== null
   );
+}
+
+function hasStringArray<K extends string>(
+  obj: object,
+  key: K,
+): obj is object & Record<K, string[]> {
+  if (!(key in obj)) return false;
+  const val = (obj as Record<string, unknown>)[key];
+  return Array.isArray(val) && val.every((v) => typeof v === "string");
 }
 
 function hasColorArray(obj: object): obj is { color: [number, number, number] } {

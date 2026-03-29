@@ -4,3 +4,4 @@ export * from "./RateLimit.js";
 export * from "./DmxMapping.js";
 export * from "./types.js";
 export * from "./ProtocolAdapter.js";
+export * from "./deepEqual.js";

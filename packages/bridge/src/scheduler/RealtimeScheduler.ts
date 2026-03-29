@@ -1,4 +1,5 @@
 import type { EntityUpdate, EntityValue } from "@artnet-bridge/protocol";
+import { isDeepEqual } from "@artnet-bridge/protocol";
 
 export class RealtimeScheduler {
   private readonly dirtySet = new Set<string>();
@@ -15,7 +16,7 @@ export class RealtimeScheduler {
   update(entityId: string, value: EntityValue): void {
     // Skip if value is identical to what we already have
     const existing = this.valueMap.get(entityId);
-    if (existing && JSON.stringify(existing) === JSON.stringify(value)) {
+    if (existing !== undefined && isDeepEqual(existing, value)) {
       return;
     }
     this.valueMap.set(entityId, value);
