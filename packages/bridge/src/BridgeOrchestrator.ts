@@ -109,6 +109,10 @@ export class BridgeOrchestrator {
     this.createSchedulers();
 
     // 5. Start ArtNet listener
+    // Report configured universes in ArtPollReply so controllers see what we listen on
+    const universes = [...new Set(this.config.bridges.map((b) => b.universe))];
+    this.artnet.setOutputUniverses(universes);
+
     this.artnet.on("error", (err) => console.error("ArtNet error:", err));
     this.artnet.on("dmx", this.dmxHandler);
     await this.artnet.start();

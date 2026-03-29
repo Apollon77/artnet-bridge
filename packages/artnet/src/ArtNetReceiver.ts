@@ -19,6 +19,8 @@ export interface ArtNetReceiverOptions {
   shortName?: string;
   /** Long name for OpPollReply (default: "ArtNet Bridge", max 63 chars) */
   longName?: string;
+  /** Output universes to report in OpPollReply (up to 4 ports) */
+  outputUniverses?: number[];
 }
 
 export interface ArtNetReceiverEvents {
@@ -75,6 +77,8 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
   readonly shortName: string;
   /** Long name reported in OpPollReply (max 63 chars) */
   readonly longName: string;
+  /** Output universes reported in OpPollReply */
+  private outputUniverses: number[];
 
   constructor(options?: ArtNetReceiverOptions) {
     super();
@@ -83,6 +87,12 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
     this.autoReplyToPoll = options?.autoReplyToPoll ?? true;
     this.shortName = options?.shortName ?? "ArtNet Bridge";
     this.longName = options?.longName ?? "ArtNet Bridge";
+    this.outputUniverses = options?.outputUniverses ?? [];
+  }
+
+  /** Update the output universes reported in OpPollReply (can be called at runtime). */
+  setOutputUniverses(universes: number[]): void {
+    this.outputUniverses = universes.slice(0, 4); // ArtNet supports max 4 ports per node
   }
 
   /** Bind the UDP socket and start listening for Art-Net packets. */
@@ -129,12 +139,40 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
   /** Send an OpPollReply to the given address. */
   private sendPollReply(address: string, port: number): void {
     const ipParts = getLocalIpAddress();
+    const numPorts = Math.min(this.outputUniverses.length, 4);
+
+    // Port types: each port is output (bit 7 = output capable)
+    const portTypes: readonly [number, number, number, number] = [
+      numPorts > 0 ? 0x80 : 0, // port 0: output capable
+      numPorts > 1 ? 0x80 : 0,
+      numPorts > 2 ? 0x80 : 0,
+      numPorts > 3 ? 0x80 : 0,
+    ];
+
+    // swOut: universe low byte per port
+    const swOut: readonly [number, number, number, number] = [
+      this.outputUniverses[0] !== undefined ? this.outputUniverses[0] & 0xff : 0,
+      this.outputUniverses[1] !== undefined ? this.outputUniverses[1] & 0xff : 0,
+      this.outputUniverses[2] !== undefined ? this.outputUniverses[2] & 0xff : 0,
+      this.outputUniverses[3] !== undefined ? this.outputUniverses[3] & 0xff : 0,
+    ];
+
+    // Net and subnet from the first universe (simplified — all ports share net/sub)
+    const firstUniverse = this.outputUniverses[0] ?? 0;
+    const netSwitch = (firstUniverse >> 8) & 0x7f;
+    const subSwitch = (firstUniverse >> 4) & 0x0f;
+
     const reply = serializePollReplyPacket({
       ipAddress: ipParts,
       shortName: this.shortName,
       longName: this.longName,
-      numPorts: 0,
+      numPorts,
+      portTypes,
+      swOut,
+      netSwitch,
+      subSwitch,
       style: 0x00, // StNode
+      status2: 0x08, // supports Art-Net 3+, DHCP capable
     });
     this.socket?.send(reply, 0, reply.length, port, address);
   }
