@@ -926,7 +926,7 @@ function renderMappingEditor(bridgeId) {
   if (bridgeCfg && bridgeCfg.channelMappings) {
     for (var i = 0; i < bridgeCfg.channelMappings.length; i++) {
       var m = bridgeCfg.channelMappings[i];
-      existingMappings[m.targetId || m.entityId] = m;
+      existingMappings[m.targetId] = m;
     }
   }
 
