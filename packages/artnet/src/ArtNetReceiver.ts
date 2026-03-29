@@ -121,7 +121,9 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
         case 0x2000:
           this.emit("poll", { address: rinfo.address, port: rinfo.port });
           if (this.autoReplyToPoll && this.socket) {
-            this.sendPollReply(rinfo.address, rinfo.port);
+            // Per Art-Net spec, PollReply is sent to the Art-Net port (6454),
+            // broadcast on the local network (or unicast to the sender's IP on port 6454)
+            this.sendPollReply(rinfo.address, ARTNET_PORT);
           }
           break;
       }
@@ -136,9 +138,12 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
     });
   }
 
-  /** Send an OpPollReply to the given address. */
+  /** Send an OpPollReply to the given address on the Art-Net port. */
   private sendPollReply(address: string, port: number): void {
     const ipParts = getLocalIpAddress();
+    console.log(
+      `[ArtNet] Sending PollReply to ${address}:${port} (our IP: ${ipParts.join(".")}, ${this.outputUniverses.length} ports)`,
+    );
     const numPorts = Math.min(this.outputUniverses.length, 4);
 
     // Port types: each port is output (bit 7 = output capable)
@@ -162,19 +167,37 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
     const netSwitch = (firstUniverse >> 8) & 0x7f;
     const subSwitch = (firstUniverse >> 4) & 0x0f;
 
+    // GoodOutputA: bit 7 = data being transmitted
+    const goodOutputA: readonly [number, number, number, number] = [
+      numPorts > 0 ? 0x80 : 0,
+      numPorts > 1 ? 0x80 : 0,
+      numPorts > 2 ? 0x80 : 0,
+      numPorts > 3 ? 0x80 : 0,
+    ];
+
     const reply = serializePollReplyPacket({
       ipAddress: ipParts,
       shortName: this.shortName,
       longName: this.longName,
       numPorts,
       portTypes,
+      goodOutputA,
       swOut,
       netSwitch,
       subSwitch,
       style: 0x00, // StNode
+      status1: 0xd0, // Indicators normal, Port-Address programming authority = network
       status2: 0x08, // supports Art-Net 3+, DHCP capable
     });
+    // Send unicast to the requester AND broadcast for other listeners
     this.socket?.send(reply, 0, reply.length, port, address);
+    // Also try broadcast so all controllers on the network see us
+    try {
+      this.socket?.setBroadcast(true);
+      this.socket?.send(reply, 0, reply.length, port, "255.255.255.255");
+    } catch {
+      // Broadcast may not be available on all interfaces
+    }
   }
 
   /** Close the UDP socket and stop receiving. */
