@@ -447,3 +447,23 @@ td:last-child {
 .artnet-stat strong {
   color: var(--text);
 }
+
+/* ── Channel mapping editor ─────────────────────────────────────────── */
+
+.mapping-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.mapping-table th { text-align: left; font-size: 0.8rem; color: var(--muted); padding: 4px 8px; }
+.mapping-table td { padding: 4px 8px; background: transparent; border: none; border-radius: 0; }
+.mapping-table td:first-child { border: none; border-radius: 0; }
+.mapping-table td:last-child { border: none; border-radius: 0; }
+.mapping-table input[type="number"] {
+    width: 60px; padding: 4px 8px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-size: 0.85rem;
+}
+.mapping-table select {
+    padding: 4px 8px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text); font-size: 0.85rem;
+}
+.mapping-table input.error, .mapping-table select.error { border-color: var(--danger); }
+.mapping-error { color: var(--danger); font-size: 0.8rem; margin: 4px 0; }
+.mapping-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.mapping-success { color: var(--accent-2); font-size: 0.85rem; margin-left: 8px; }

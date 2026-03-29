@@ -243,6 +243,13 @@ function openDetail(bridgeId, detailDiv, toggleBtn) {
 
   detailDiv.appendChild(el("div", "divider"));
 
+  // Channel mapping editor
+  const mappingSection = document.createElement("div");
+  mappingSection.id = "mapping-" + bridgeId;
+  detailDiv.appendChild(mappingSection);
+
+  detailDiv.appendChild(el("div", "divider"));
+
   const budgetsContainer = el("div");
   budgetsContainer.id = "budgets-" + bridgeId;
   detailDiv.appendChild(budgetsContainer);
@@ -286,8 +293,10 @@ function openDetail(bridgeId, detailDiv, toggleBtn) {
   testSection.appendChild(testStatusEl);
   detailDiv.appendChild(testSection);
 
-  // Load entities via REST first
-  loadEntities(bridgeId);
+  // Load entities via REST first, then render mapping editor
+  loadEntities(bridgeId).then(function () {
+    renderMappingEditor(bridgeId);
+  });
 
   // Open WebSocket for live status
   connectWs(bridgeId);
@@ -351,11 +360,40 @@ function renderEntities(bridgeId, entities, liveData) {
 
   if (!entities || !entities.length) {
     root.className = "muted";
-    root.textContent = "No entities.";
+    root.textContent = "No entities found on this bridge.";
     return;
   }
 
   root.className = "";
+
+  // Split into mapped and unmapped
+  var mapped = entities.filter(function (e) { return e.dmxMapping; });
+  var unmapped = entities.filter(function (e) { return !e.dmxMapping; });
+
+  // If no mapped entities, show a prompt instead of an empty table
+  if (mapped.length === 0) {
+    var hint = el("div", "muted");
+    hint.style.marginBottom = "8px";
+    hint.textContent = "No entities mapped to DMX channels yet. ";
+    var mapLink = document.createElement("a");
+    mapLink.href = "#";
+    mapLink.textContent = "Use the Channel Mapping editor below";
+    mapLink.style.color = "var(--accent)";
+    mapLink.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      var mappingSection = document.getElementById("mapping-" + bridgeId);
+      if (mappingSection) mappingSection.scrollIntoView({ behavior: "smooth" });
+    });
+    hint.appendChild(mapLink);
+    hint.appendChild(document.createTextNode(" to assign DMX addresses."));
+    root.appendChild(hint);
+
+    // Also show unmapped count
+    if (unmapped.length > 0) {
+      root.appendChild(el("div", "muted", unmapped.length + " entities available for mapping."));
+    }
+    return;
+  }
 
   // Initialise test selections for this bridge if not yet done
   if (!testSelections.has(bridgeId)) {
@@ -379,7 +417,7 @@ function renderEntities(bridgeId, entities, liveData) {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  for (const e of entities) {
+  for (const e of mapped) {
     const tr = document.createElement("tr");
 
     // Checkbox for test selection
@@ -450,6 +488,16 @@ function renderEntities(bridgeId, entities, liveData) {
   }
   table.appendChild(tbody);
   root.appendChild(table);
+
+  // Show unmapped entity count if any
+  if (unmapped.length > 0) {
+    var unmappedHint = el("div", "muted");
+    unmappedHint.style.marginTop = "8px";
+    unmappedHint.style.fontSize = "0.8rem";
+    unmappedHint.textContent = unmapped.length + " additional entit" +
+      (unmapped.length === 1 ? "y" : "ies") + " available — assign DMX addresses in the Channel Mapping section below.";
+    root.appendChild(unmappedHint);
+  }
 }
 
 function renderBudgets(bridgeId, rateLimitUsage) {
@@ -821,4 +869,320 @@ async function saveConfig() {
   } catch (e) {
     toast(status, "err", e.message);
   }
+}
+
+// ── Channel Mapping Editor ──────────────────────────────────────────────
+
+function mappingChannelWidth(mode) {
+  switch (mode) {
+    case "8bit": return 3;
+    case "8bit-dimmable": return 4;
+    case "16bit": return 6;
+    case "scene-selector": return 1;
+    case "brightness": return 1;
+    default: return 0;
+  }
+}
+
+function mappingCompatibleModes(layoutType) {
+  switch (layoutType) {
+    case "rgb": return ["8bit", "8bit-dimmable", "16bit"];
+    case "rgb-dimmable": return ["8bit-dimmable"];
+    case "brightness": return ["brightness"];
+    case "scene-selector": return ["scene-selector"];
+    default: return [];
+  }
+}
+
+function mappingDefaultMode(layoutType) {
+  var modes = mappingCompatibleModes(layoutType);
+  return modes.length > 0 ? modes[0] : "";
+}
+
+function renderMappingEditor(bridgeId) {
+  var root = document.getElementById("mapping-" + bridgeId);
+  if (!root) return;
+
+  var entities = bridgeEntitiesCache.get(bridgeId);
+  if (!entities || !entities.length) {
+    root.textContent = "";
+    root.appendChild(el("strong", null, "Channel Mapping"));
+    root.appendChild(el("div", "muted", "No entities available for mapping."));
+    return;
+  }
+
+  // Find the bridge config to get existing mappings
+  var bridgeCfg = null;
+  if (config && config.bridges) {
+    for (var i = 0; i < config.bridges.length; i++) {
+      if (config.bridges[i].id === bridgeId) {
+        bridgeCfg = config.bridges[i];
+        break;
+      }
+    }
+  }
+
+  var existingMappings = {};
+  if (bridgeCfg && bridgeCfg.channelMappings) {
+    for (var i = 0; i < bridgeCfg.channelMappings.length; i++) {
+      var m = bridgeCfg.channelMappings[i];
+      existingMappings[m.entityId] = m;
+    }
+  }
+
+  // Local mapping state: array of { entityId, entityName, layoutType, dmxStart, mode }
+  var mappingState = [];
+  for (var i = 0; i < entities.length; i++) {
+    var ent = entities[i];
+    var layoutType = ent.channelLayout?.type || "";
+    var modes = mappingCompatibleModes(layoutType);
+    if (modes.length === 0) continue; // skip entities with no compatible modes
+
+    var existing = existingMappings[ent.id];
+    var dmxStart = existing ? existing.dmxStart : null;
+    var mode = existing ? existing.channelMode : modes[0];
+    // Validate that existing mode is compatible
+    if (modes.indexOf(mode) === -1) mode = modes[0];
+
+    mappingState.push({
+      entityId: ent.id,
+      entityName: ent.metadata?.name || ent.id,
+      layoutType: layoutType,
+      compatibleModes: modes,
+      dmxStart: dmxStart,
+      mode: mode
+    });
+  }
+
+  // Build the UI
+  root.textContent = "";
+  root.appendChild(el("strong", null, "Channel Mapping"));
+
+  var actionsDiv = el("div", "mapping-actions");
+  actionsDiv.style.marginTop = "8px";
+
+  actionsDiv.appendChild(btn("Auto-map All", "small", function () {
+    var next = 1;
+    for (var i = 0; i < mappingState.length; i++) {
+      mappingState[i].dmxStart = next;
+      mappingState[i].mode = mappingDefaultMode(mappingState[i].layoutType);
+      next += mappingChannelWidth(mappingState[i].mode);
+    }
+    rebuildTable();
+  }));
+
+  actionsDiv.appendChild(btn("Auto-map RGB 8bit", "small", function () {
+    var next = 1;
+    for (var i = 0; i < mappingState.length; i++) {
+      if (mappingState[i].layoutType === "rgb") {
+        mappingState[i].dmxStart = next;
+        mappingState[i].mode = "8bit";
+        next += mappingChannelWidth("8bit");
+      }
+    }
+    rebuildTable();
+  }));
+
+  actionsDiv.appendChild(btn("Clear All", "small danger", function () {
+    for (var i = 0; i < mappingState.length; i++) {
+      mappingState[i].dmxStart = null;
+      mappingState[i].mode = mappingState[i].compatibleModes[0];
+    }
+    rebuildTable();
+  }));
+
+  root.appendChild(actionsDiv);
+
+  var tableContainer = document.createElement("div");
+  root.appendChild(tableContainer);
+
+  var errorContainer = document.createElement("div");
+  root.appendChild(errorContainer);
+
+  var saveRow = el("div", "row");
+  saveRow.style.marginTop = "8px";
+
+  var saveStatusEl = document.createElement("span");
+  saveStatusEl.className = "mapping-success";
+
+  saveRow.appendChild(btn("Save Mappings", "small primary", async function () {
+    saveStatusEl.textContent = "";
+    saveStatusEl.className = "mapping-success";
+    try {
+      // Re-read config to avoid stale data
+      var freshConfig = await api("GET", "/api/config");
+      var bridgeIdx = -1;
+      for (var i = 0; i < freshConfig.bridges.length; i++) {
+        if (freshConfig.bridges[i].id === bridgeId) {
+          bridgeIdx = i;
+          break;
+        }
+      }
+      if (bridgeIdx === -1) {
+        saveStatusEl.className = "mapping-error";
+        saveStatusEl.textContent = "Bridge not found in config.";
+        return;
+      }
+
+      // Build channelMappings from state
+      var newMappings = [];
+      for (var i = 0; i < mappingState.length; i++) {
+        var ms = mappingState[i];
+        if (ms.dmxStart != null && ms.dmxStart > 0) {
+          newMappings.push({
+            entityId: ms.entityId,
+            dmxStart: ms.dmxStart,
+            channelMode: ms.mode,
+            channelWidth: mappingChannelWidth(ms.mode)
+          });
+        }
+      }
+
+      freshConfig.bridges[bridgeIdx].channelMappings = newMappings;
+      await api("PUT", "/api/config", freshConfig);
+      config = freshConfig; // update local cache
+      saveStatusEl.textContent = "Saved \u2713";
+
+      // Reload entities to update DMX column
+      await loadEntities(bridgeId);
+    } catch (e) {
+      saveStatusEl.className = "mapping-error";
+      saveStatusEl.textContent = e.message;
+    }
+  }));
+  saveRow.appendChild(saveStatusEl);
+  root.appendChild(saveRow);
+
+  function validate() {
+    var errors = [];
+    // Check bounds and overlaps
+    for (var i = 0; i < mappingState.length; i++) {
+      var ms = mappingState[i];
+      if (ms.dmxStart == null) continue;
+      var width = mappingChannelWidth(ms.mode);
+      var end = ms.dmxStart + width - 1;
+      if (ms.dmxStart < 1 || ms.dmxStart > 512) {
+        errors.push({ index: i, msg: ms.entityName + ": DMX start out of range (1-512)" });
+      }
+      if (end > 512) {
+        errors.push({ index: i, msg: ms.entityName + ": DMX range exceeds 512 (ends at " + end + ")" });
+      }
+
+      // Check overlaps with other mapped entities
+      for (var j = i + 1; j < mappingState.length; j++) {
+        var other = mappingState[j];
+        if (other.dmxStart == null) continue;
+        var otherWidth = mappingChannelWidth(other.mode);
+        var otherEnd = other.dmxStart + otherWidth - 1;
+        // Overlap if ranges intersect
+        if (ms.dmxStart <= otherEnd && other.dmxStart <= end) {
+          errors.push({
+            index: i,
+            indexB: j,
+            msg: ms.entityName + " (" + ms.dmxStart + "-" + end + ") overlaps with " + other.entityName + " (" + other.dmxStart + "-" + otherEnd + ")"
+          });
+        }
+      }
+    }
+    return errors;
+  }
+
+  function rebuildTable() {
+    tableContainer.textContent = "";
+    errorContainer.textContent = "";
+
+    var table = document.createElement("table");
+    table.className = "mapping-table";
+
+    var thead = document.createElement("thead");
+    var headRow = document.createElement("tr");
+    var headers = ["Entity Name", "DMX Start", "Mode", "DMX End"];
+    for (var h = 0; h < headers.length; h++) {
+      var th = document.createElement("th");
+      th.textContent = headers[h];
+      headRow.appendChild(th);
+    }
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    var errors = validate();
+    var errorIndices = new Set();
+    for (var e = 0; e < errors.length; e++) {
+      errorIndices.add(errors[e].index);
+      if (errors[e].indexB != null) errorIndices.add(errors[e].indexB);
+    }
+
+    var tbody = document.createElement("tbody");
+    for (var i = 0; i < mappingState.length; i++) {
+      (function (idx) {
+        var ms = mappingState[idx];
+        var tr = document.createElement("tr");
+
+        // Entity name
+        var tdName = document.createElement("td");
+        tdName.textContent = ms.entityName;
+        tr.appendChild(tdName);
+
+        // DMX Start input
+        var tdStart = document.createElement("td");
+        var startInput = document.createElement("input");
+        startInput.type = "number";
+        startInput.min = "1";
+        startInput.max = "512";
+        if (ms.dmxStart != null) startInput.value = String(ms.dmxStart);
+        else startInput.value = "";
+        startInput.placeholder = "--";
+        if (errorIndices.has(idx)) startInput.className = "error";
+        startInput.addEventListener("change", function () {
+          var val = parseInt(this.value, 10);
+          mappingState[idx].dmxStart = isNaN(val) ? null : val;
+          rebuildTable();
+        });
+        tdStart.appendChild(startInput);
+        tr.appendChild(tdStart);
+
+        // Mode select
+        var tdMode = document.createElement("td");
+        var modeSelect = document.createElement("select");
+        for (var m = 0; m < ms.compatibleModes.length; m++) {
+          var opt = document.createElement("option");
+          opt.value = ms.compatibleModes[m];
+          opt.textContent = ms.compatibleModes[m];
+          if (ms.compatibleModes[m] === ms.mode) opt.selected = true;
+          modeSelect.appendChild(opt);
+        }
+        modeSelect.addEventListener("change", function () {
+          mappingState[idx].mode = this.value;
+          rebuildTable();
+        });
+        tdMode.appendChild(modeSelect);
+        tr.appendChild(tdMode);
+
+        // DMX End (computed)
+        var tdEnd = document.createElement("td");
+        if (ms.dmxStart != null) {
+          var width = mappingChannelWidth(ms.mode);
+          tdEnd.textContent = String(ms.dmxStart + width - 1);
+        } else {
+          tdEnd.textContent = "--";
+          tdEnd.className = "muted";
+        }
+        tr.appendChild(tdEnd);
+
+        tbody.appendChild(tr);
+      })(i);
+    }
+    table.appendChild(tbody);
+    tableContainer.appendChild(table);
+
+    // Show errors
+    if (errors.length > 0) {
+      for (var e = 0; e < errors.length; e++) {
+        var errDiv = el("div", "mapping-error", "\u26A0 " + errors[e].msg);
+        errorContainer.appendChild(errDiv);
+      }
+    }
+  }
+
+  rebuildTable();
 }
