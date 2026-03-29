@@ -42,7 +42,7 @@
         "oxlint": "^1.56.0",
         "oxlint-tsgolint": "^0.17.1",
         "tsx": "^4.21.0",
-        "typescript": "~5.9.3"
+        "typescript": "~6.0.2"
     },
     "engines": {
         "node": ">=22.13.0"
