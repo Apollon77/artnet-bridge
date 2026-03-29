@@ -228,6 +228,11 @@ export class BridgeOrchestrator {
     return this.adapters;
   }
 
+  /** Update entity value tracking (used by test controls to reflect test state in UI). */
+  setEntityValue(bridgeId: string, entityId: string, value: EntityValue): void {
+    this.entityValues.set(`${bridgeId}:${entityId}`, { value, timestamp: Date.now() });
+  }
+
   getStatus(): RuntimeStatus {
     const bridges: Record<string, BridgeRuntimeStatus> = {};
 

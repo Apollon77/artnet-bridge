@@ -497,7 +497,18 @@ function renderEntities(bridgeId, entities, liveData) {
     tdColor.appendChild(swatch);
     const rgbLabel = document.createElement("span");
     rgbLabel.className = "muted";
-    rgbLabel.textContent = rgb ? rgb[0] + ", " + rgb[1] + ", " + rgb[2] : "--";
+    if (rgb) {
+      var colorText = rgb[0] + ", " + rgb[1] + ", " + rgb[2];
+      // Show dimmer percentage for rgb-dimmable values
+      var rawVal = live?.rawValue;
+      if (rawVal && rawVal.type === "rgb-dimmable") {
+        var dimPct = Math.round((rawVal.dim / 65535) * 100);
+        colorText += " @ " + dimPct + "%";
+      }
+      rgbLabel.textContent = colorText;
+    } else {
+      rgbLabel.textContent = "--";
+    }
     tdColor.appendChild(rgbLabel);
     tr.appendChild(tdColor);
 
@@ -611,6 +622,7 @@ function connectWs(bridgeId) {
           var estat = pair[1];
           liveData.entities[eid] = {
             rgb: entityValueToRgb(estat.lastValue),
+            rawValue: estat.lastValue,
             lastUpdate: estat.lastUpdate,
           };
         }

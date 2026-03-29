@@ -7,6 +7,7 @@ import type { BridgeConfig } from "../../config/ConfigSchema.js";
 export function createBridgeRoutes(
   adapters: ProtocolAdapter[],
   configManager?: ConfigManager,
+  orchestrator?: { setEntityValue(bridgeId: string, entityId: string, value: import("@artnet-bridge/protocol").EntityValue): void },
 ): Router {
   const router = Router();
 
@@ -149,9 +150,15 @@ export function createBridgeRoutes(
         (e) => e.controlMode === "limited" && e.category === "light",
       );
 
+      // Send as rgb-dimmable with 100% dimmer for clear visual feedback
+      const isOff = r === 0 && g === 0 && b === 0;
+      const testValue = isOff
+        ? { type: "rgb" as const, r: 0, g: 0, b: 0 }
+        : { type: "rgb-dimmable" as const, dim: 65535, r, g, b };
+
       const updates = realtimeEntities.map((entity) => ({
         entityId: entity.id,
-        value: { type: "rgb" as const, r, g, b },
+        value: testValue,
       }));
 
       const promises: Promise<void>[] = [];
@@ -161,14 +168,7 @@ export function createBridgeRoutes(
       }
 
       for (const entity of limitedEntities) {
-        promises.push(
-          adapter.handleLimitedUpdate(bridgeId, entity.id, {
-            type: "rgb",
-            r,
-            g,
-            b,
-          }),
-        );
+        promises.push(adapter.handleLimitedUpdate(bridgeId, entity.id, testValue));
       }
 
       if (promises.length === 0) {
@@ -177,6 +177,14 @@ export function createBridgeRoutes(
       }
 
       await Promise.all(promises);
+
+      // Update entity tracking so test values show in live status UI
+      if (orchestrator) {
+        for (const entity of selectedEntities) {
+          orchestrator.setEntityValue(bridgeId, entity.id, testValue);
+        }
+      }
+
       res.json({ ok: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Test update failed";

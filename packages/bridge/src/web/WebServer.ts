@@ -42,7 +42,10 @@ export class WebServer {
     // REST API routes
     this.app.use("/api/config", createConfigRoutes(options.configManager));
     this.app.use("/api/status", createStatusRoutes(options.orchestrator));
-    this.app.use("/api/bridges", createBridgeRoutes(options.adapters, options.configManager));
+    this.app.use(
+      "/api/bridges",
+      createBridgeRoutes(options.adapters, options.configManager, options.orchestrator),
+    );
 
     // Protocol adapter routes
     for (const adapter of options.adapters) {
