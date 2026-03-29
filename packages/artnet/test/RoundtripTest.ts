@@ -23,6 +23,7 @@ describe("Art-Net Roundtrip Integration", () => {
     receiver = new ArtNetReceiver({ port, bindAddress: "127.0.0.1" });
     await receiver.start();
     sender = new ArtNetSender({ targetAddress: "127.0.0.1", port });
+    await sender.waitReady();
   });
 
   afterEach(async () => {

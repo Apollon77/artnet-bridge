@@ -18,6 +18,7 @@ export class ArtNetSender {
   private readonly port: number;
   private readonly socket: Socket;
   private bound = false;
+  private readonly readyPromise: Promise<void>;
 
   constructor(options?: ArtNetSenderOptions) {
     this.targetAddress = options?.targetAddress ?? "255.255.255.255";
@@ -28,10 +29,18 @@ export class ArtNetSender {
     this.socket.on("error", (err) => console.error("[ArtNet] Sender socket error:", err.message));
 
     // setBroadcast requires the socket to be bound; bind to an ephemeral port first
-    this.socket.bind(0, () => {
-      this.socket.setBroadcast(true);
-      this.bound = true;
+    this.readyPromise = new Promise<void>((resolve) => {
+      this.socket.bind(0, () => {
+        this.socket.setBroadcast(true);
+        this.bound = true;
+        resolve();
+      });
     });
+  }
+
+  /** Wait until the socket is bound and ready to send. */
+  waitReady(): Promise<void> {
+    return this.readyPromise;
   }
 
   /**

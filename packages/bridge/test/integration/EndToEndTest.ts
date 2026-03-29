@@ -180,6 +180,7 @@ describe("End-to-end integration", () => {
 
     // Send DMX data via ArtNetSender
     sender = new ArtNetSender({ targetAddress: "127.0.0.1", port: artnetPort });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     dmxData[0] = 255; // R
     dmxData[1] = 128; // G
@@ -224,6 +225,7 @@ describe("End-to-end integration", () => {
     await orchestrator.start();
 
     sender = new ArtNetSender({ targetAddress: "127.0.0.1", port: artnetPort });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     dmxData[3] = 200; // R (channel 4, 0-indexed=3)
     dmxData[4] = 100; // G
@@ -267,6 +269,7 @@ describe("End-to-end integration", () => {
     await orchestrator.start();
 
     sender = new ArtNetSender({ targetAddress: "127.0.0.1", port: artnetPort });
+    await sender.waitReady();
 
     // Send many rapid DMX updates over ~500ms
     for (let i = 0; i < 10; i++) {
@@ -310,6 +313,7 @@ describe("End-to-end integration", () => {
 
     // Send one DMX frame with data for both entities
     sender = new ArtNetSender({ targetAddress: "127.0.0.1", port: artnetPort });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     // light-1: channels 1-3 (RGB)
     dmxData[0] = 255;
@@ -397,6 +401,7 @@ describe("End-to-end integration", () => {
 
     // Send DMX data to trigger activity
     sender = new ArtNetSender({ targetAddress: "127.0.0.1", port: artnetPort });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     dmxData[0] = 100;
     dmxData[1] = 200;

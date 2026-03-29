@@ -225,6 +225,7 @@ describe("BridgeOrchestrator", () => {
 
     // Send a DMX frame via ArtNetSender
     const sender = new ArtNetSender({ targetAddress: "127.0.0.1", port });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     dmxData[0] = 255; // R
     dmxData[1] = 128; // G
@@ -274,6 +275,7 @@ describe("BridgeOrchestrator", () => {
 
     // Send DMX data that covers both entities
     const sender = new ArtNetSender({ targetAddress: "127.0.0.1", port });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     // light-rt: channels 1-3
     dmxData[0] = 100;
@@ -337,6 +339,7 @@ describe("BridgeOrchestrator", () => {
 
     // Send DMX data
     const sender = new ArtNetSender({ targetAddress: "127.0.0.1", port });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     dmxData[0] = 100;
     dmxData[1] = 200;
@@ -402,6 +405,7 @@ describe("BridgeOrchestrator", () => {
 
     // Send DMX covering both entity ranges
     const sender = new ArtNetSender({ targetAddress: "127.0.0.1", port });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     dmxData[0] = 255;
     dmxData[1] = 128;
@@ -557,6 +561,7 @@ describe("BridgeOrchestrator", () => {
 
     // Send DMX on universe 5 (no mappings there)
     const sender = new ArtNetSender({ targetAddress: "127.0.0.1", port });
+    await sender.waitReady();
     const dmxData = new Uint8Array(512);
     dmxData[0] = 255;
     sender.sendDmx(5, dmxData);

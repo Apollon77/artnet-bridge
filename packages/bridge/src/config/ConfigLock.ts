@@ -32,10 +32,19 @@ export class ConfigLock {
     try {
       const pid = parseInt(readFileSync(this.lockPath, "utf-8").trim(), 10);
       if (isNaN(pid)) return true;
-      process.kill(pid, 0); // just checks if process exists
+      try {
+        process.kill(pid, 0); // just checks if process exists
+      } catch (err: unknown) {
+        // EPERM means the process exists but we lack permission to signal it — not stale
+        if (err && typeof err === "object" && "code" in err && err.code === "EPERM") {
+          return false;
+        }
+        // ESRCH or other errors mean process not running — stale
+        return true;
+      }
       return pid === process.pid; // same process = stale from previous crash
     } catch {
-      return true; // process not running = stale
+      return true; // can't read lock file = treat as stale
     }
   }
 }

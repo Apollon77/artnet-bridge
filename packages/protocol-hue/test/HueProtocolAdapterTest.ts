@@ -18,10 +18,10 @@ import type { HueAdapterConfig } from "../src/HueProtocolAdapter.js";
 // ---------------------------------------------------------------------------
 
 const LIGHTS: HueLight[] = [
-  { id: "light-1", metadata: { name: "Desk lamp" }, type: "light" },
-  { id: "light-2", metadata: { name: "Ceiling" }, type: "light" },
-  { id: "light-3", metadata: { name: "Floor lamp" }, type: "light" },
-  { id: "light-4", metadata: { name: "TV Backlight" }, type: "light" },
+  { id: "light-1", metadata: { name: "Desk lamp" }, type: "light", color: { gamut_type: "C" } },
+  { id: "light-2", metadata: { name: "Ceiling" }, type: "light", color: { gamut_type: "C" } },
+  { id: "light-3", metadata: { name: "Floor lamp" }, type: "light", color: { gamut_type: "C" } },
+  { id: "light-4", metadata: { name: "TV Backlight" }, type: "light", color: { gamut_type: "C" } },
 ];
 
 const ROOMS: HueRoom[] = [
@@ -244,7 +244,10 @@ describe("HueProtocolAdapter", () => {
     });
 
     it("should map all lights as limited when no entertainment area is configured", async () => {
-      const { adapter } = buildAdapter();
+      // Pass empty entertainment configs to prevent auto-select
+      const { adapter } = buildAdapter({
+        clientOverrides: { entertainmentConfigs: [] },
+      });
       await adapter.connect();
 
       const bridges = await adapter.getBridges();
@@ -266,7 +269,8 @@ describe("HueProtocolAdapter", () => {
       const groupEntities = bridges[0].entities.filter((e) => e.category === "group");
       assert.equal(groupEntities.length, 2); // 1 room + 1 zone
       assert.equal(groupEntities[0].controlMode, "limited");
-      assert.deepEqual(groupEntities[0].channelLayout, { type: "brightness" });
+      // Groups with color-capable lights get rgb layout
+      assert.deepEqual(groupEntities[0].channelLayout, { type: "rgb" });
     });
 
     it("should include scene selector entities for groups with scenes", async () => {

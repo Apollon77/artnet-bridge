@@ -18,13 +18,24 @@ class StubOrchestrator {
   }
 }
 
-function waitForMessage(ws: WebSocket): Promise<string> {
+function waitForMessage(ws: WebSocket, expectedType?: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timed out waiting for message")), 2000);
-    ws.once("message", (data) => {
+    const timeout = setTimeout(() => reject(new Error("Timed out waiting for message")), 4000);
+    const handler = (data: unknown): void => {
+      const raw = String(data);
+      if (expectedType) {
+        try {
+          const parsed = JSON.parse(raw) as { type?: string };
+          if (parsed.type !== expectedType) return; // skip non-matching messages (e.g. "artnet")
+        } catch {
+          return;
+        }
+      }
       clearTimeout(timeout);
-      resolve(String(data));
-    });
+      ws.off("message", handler);
+      resolve(raw);
+    };
+    ws.on("message", handler);
   });
 }
 
@@ -83,7 +94,7 @@ describe("WebSocketHandler", () => {
     try {
       ws.send(JSON.stringify({ type: "subscribe", bridgeId: "bridge-1" }));
 
-      const raw = await waitForMessage(ws);
+      const raw = await waitForMessage(ws, "status");
       const msg = JSON.parse(raw);
       assert.equal(msg.type, "status");
       assert.equal(msg.bridgeId, "bridge-1");
@@ -109,30 +120,34 @@ describe("WebSocketHandler", () => {
       ws.send(JSON.stringify({ type: "subscribe", bridgeId: "bridge-2" }));
 
       // Wait for first status push
-      await waitForMessage(ws);
+      await waitForMessage(ws, "status");
 
       ws.send(JSON.stringify({ type: "unsubscribe", bridgeId: "bridge-2" }));
 
-      // Wait a bit — should NOT receive further messages
-      const gotMessage = await Promise.race([
-        waitForMessage(ws).then(() => true),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 1200)),
+      // Wait for unsubscribe to take effect (need to cross at least one push interval)
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      // Now wait — should NOT receive a "status" message
+      const gotStatus = await Promise.race([
+        waitForMessage(ws, "status").then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
       ]);
-      assert.equal(gotMessage, false, "Should not receive messages after unsubscribe");
+      assert.equal(gotStatus, false, "Should not receive status messages after unsubscribe");
     } finally {
       ws.close();
     }
   });
 
-  it("no subscriptions means no data pushed", async () => {
+  it("no subscriptions means no status data pushed", async () => {
     const ws = await connectWs(port);
     try {
-      // Just connect, don't subscribe
-      const gotMessage = await Promise.race([
-        waitForMessage(ws).then(() => true),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 1200)),
+      // Just connect, don't subscribe — should not receive "status" messages
+      // (may receive "artnet" messages which go to all clients)
+      const gotStatus = await Promise.race([
+        waitForMessage(ws, "status").then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 1500)),
       ]);
-      assert.equal(gotMessage, false, "Should not receive messages without subscription");
+      assert.equal(gotStatus, false, "Should not receive status messages without subscription");
     } finally {
       ws.close();
     }
@@ -155,7 +170,7 @@ describe("WebSocketHandler", () => {
         entities: {},
       };
       ws.send(JSON.stringify({ type: "subscribe", bridgeId: "bridge-3" }));
-      const raw = await waitForMessage(ws);
+      const raw = await waitForMessage(ws, "status");
       const msg = JSON.parse(raw);
       assert.equal(msg.type, "status");
       assert.equal(msg.bridgeId, "bridge-3");
