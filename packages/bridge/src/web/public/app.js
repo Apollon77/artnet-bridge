@@ -1363,7 +1363,7 @@ function renderMappingEditor(bridgeId) {
         tbody.appendChild(tr);
 
         // For scene-selectors: show the index→name mapping as a reference row
-        if (ms.layoutType === "scene-selector" && ms.scenes && ms.scenes.length > 0 && ms.dmxStart != null) {
+        if (ms.layoutType === "scene-selector" && ms.scenes && ms.scenes.length > 0) {
           var sceneTr = document.createElement("tr");
           var sceneTd = document.createElement("td");
           sceneTd.colSpan = 8;
