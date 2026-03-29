@@ -795,11 +795,12 @@ async function pair() {
     status.textContent = "Fill in all fields.";
     return;
   }
-  status.textContent = "Pairing...";
+  status.textContent = "Press the link button on your bridge now... waiting up to 30 seconds.";
+  status.className = "muted";
   try {
     const res = await api("POST", "/api/bridges/pair", { protocol, id, host });
     if (res.success) {
-      toast(status, "ok", "Paired successfully. Reload config to see it.");
+      toast(status, "ok", "Paired successfully! Bridge saved to config. Reload to see it.");
     } else {
       toast(status, "err", res.error || "Pairing failed.");
     }

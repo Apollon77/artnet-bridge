@@ -42,13 +42,21 @@ Discovering Hue bridges...
 
 ### 2. Pair with a bridge
 
-Press the **link button** on your Hue bridge, then within 30 seconds run:
+**Option A: CLI**
+
+Run the pair command — it will wait up to 30 seconds for you to press the link button:
 
 ```bash
 artnet-bridge config pair hue 192.168.1.42
 ```
 
-This creates an API user on the bridge and saves the credentials to your config file at `~/.artnet-bridge/config.json`. The bridge is added with a default entry — you will configure the DMX mapping next.
+Press the **link button** on your Hue bridge. The command polls every 2 seconds until the button is pressed or the timeout expires.
+
+**Option B: Web UI**
+
+If the server is already running, open `http://localhost:8080`, go to the Config section, enter the bridge IP, and click "Pair". Same 30-second window applies.
+
+Both methods save the bridge credentials to `~/.artnet-bridge/config.json` automatically. The bridge is added with a default entry — you will configure the DMX mapping next.
 
 ### 3. Configure DMX channel mappings
 
