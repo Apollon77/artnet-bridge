@@ -410,13 +410,21 @@ function renderEntities(bridgeId, entities, liveData) {
     return;
   }
 
-  // Initialise test selections for this bridge if not yet done
+  // Initialise test selections — only for mapped entities
   if (!testSelections.has(bridgeId)) {
     var sel = new Map();
-    for (var i = 0; i < entities.length; i++) {
-      sel.set(entities[i].id, isTestableEntity(entities[i]));
+    for (var i = 0; i < mapped.length; i++) {
+      sel.set(mapped[i].id, isTestableEntity(mapped[i]));
     }
     testSelections.set(bridgeId, sel);
+  } else {
+    // Update selections to remove unmapped entities and add newly mapped ones
+    var sel = testSelections.get(bridgeId);
+    var mappedIds = new Set(mapped.map(function (e) { return e.id; }));
+    sel.forEach(function (_v, eid) { if (!mappedIds.has(eid)) sel.delete(eid); });
+    for (var i = 0; i < mapped.length; i++) {
+      if (!sel.has(mapped[i].id)) sel.set(mapped[i].id, isTestableEntity(mapped[i]));
+    }
   }
   var selections = testSelections.get(bridgeId);
 
