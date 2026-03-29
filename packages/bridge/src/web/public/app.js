@@ -590,11 +590,10 @@ function connectWs(bridgeId) {
       ".bridge-card[data-bridge-id='" + CSS.escape(bridgeId) + "']",
     );
     if (card) {
-      const detail = card.querySelector(".bridge-detail");
-      if (detail) {
-        detail.style.opacity = "";
-        detail.style.pointerEvents = "";
-      }
+      card.querySelectorAll(".bridge-detail").forEach(function (panel) {
+        panel.style.opacity = "";
+        panel.style.pointerEvents = "";
+      });
     }
   });
 
@@ -657,11 +656,10 @@ function connectWs(bridgeId) {
       ".bridge-card[data-bridge-id='" + CSS.escape(bridgeId) + "']",
     );
     if (card) {
-      const detail = card.querySelector(".bridge-detail");
-      if (detail) {
-        detail.style.opacity = "0.5";
-        detail.style.pointerEvents = "none";
-      }
+      card.querySelectorAll(".bridge-detail").forEach(function (panel) {
+        panel.style.opacity = "0.5";
+        panel.style.pointerEvents = "none";
+      });
     }
   });
 
@@ -1156,12 +1154,14 @@ function renderMappingEditor(bridgeId) {
     });
     if (mappedLights.length > 0) {
       var lightNames = mappedLights.map(function (ms) { return "\"" + ms.entityName + "\""; });
+      var lightIndices = mappedLights.map(function (ms) { return mappingState.indexOf(ms); });
 
       // Warn for mapped groups alongside individual lights
       if (mappedGroups.length > 0) {
         for (var g = 0; g < mappedGroups.length; g++) {
           errors.push({
             index: mappingState.indexOf(mappedGroups[g]),
+            indices: lightIndices,
             isWarning: true,
             msg: "\u26a0 Group \"" + mappedGroups[g].entityName + "\" is mapped alongside " +
               lightNames.join(", ") + ". " +
@@ -1177,6 +1177,7 @@ function renderMappingEditor(bridgeId) {
       for (var s = 0; s < mappedScenes.length; s++) {
         errors.push({
           index: mappingState.indexOf(mappedScenes[s]),
+          indices: lightIndices,
           isWarning: true,
           msg: "\u26a0 Scene selector \"" + mappedScenes[s].entityName + "\" is mapped alongside " +
             lightNames.join(", ") + ". " +
@@ -1229,6 +1230,11 @@ function renderMappingEditor(bridgeId) {
     for (var e = 0; e < errors.length; e++) {
       if (errors[e].isWarning) {
         warningIndices.add(errors[e].index);
+        if (errors[e].indices) {
+          for (var k = 0; k < errors[e].indices.length; k++) {
+            warningIndices.add(errors[e].indices[k]);
+          }
+        }
       } else {
         errorIndices.add(errors[e].index);
         if (errors[e].indices) {
