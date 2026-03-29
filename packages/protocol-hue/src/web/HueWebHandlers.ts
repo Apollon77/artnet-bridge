@@ -1,10 +1,19 @@
 import { Router } from "express";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { HueClipClient } from "../HueClipClient.js";
+
+const htmlPath = join(dirname(fileURLToPath(import.meta.url)), "hue-config.html");
 
 export function createHueWebHandlers(
   getClient: (bridgeId: string) => HueClipClient | undefined,
 ): Router {
   const router = Router();
+
+  // Serve the Hue config page at the root of /protocol/hue/
+  router.get("/", (_req, res) => {
+    res.sendFile(htmlPath);
+  });
 
   // GET /entertainment-areas/:bridgeId — list entertainment areas for a bridge
   router.get("/entertainment-areas/:bridgeId", async (req, res) => {

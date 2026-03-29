@@ -36,7 +36,11 @@ body {
       transparent 55%
     ),
     var(--bg);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-color: var(--bg);
   color: var(--text);
+  min-height: 100%;
 }
 
 .app {
