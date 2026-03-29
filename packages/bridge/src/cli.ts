@@ -55,6 +55,9 @@ Usage:
   artnet-bridge [options]                     Start the bridge server
   artnet-bridge config discover <protocol>    Discover bridges (e.g. hue)
   artnet-bridge config pair <protocol> <host> Pair with a bridge
+  artnet-bridge config set <key> <value>      Set a config value (dot-notation)
+  artnet-bridge config get <key>              Get a config value (dot-notation)
+  artnet-bridge config show                   Show full config (pretty-printed)
 
 Supported protocols: hue
 
@@ -63,6 +66,13 @@ Options:
   --port <number>   Web UI port (default: 8080)
   --no-web          Disable web UI
   -h, --help        Show this help
+
+Config set examples:
+  artnet-bridge config set artnet.port 6454
+  artnet-bridge config set web.port 9090
+  artnet-bridge config set web.enabled false
+  artnet-bridge config set bridges.0.universe 1
+  artnet-bridge config set bridges.0.name "Living Room"
 `);
 }
 
@@ -190,6 +200,51 @@ async function main(): Promise<void> {
 
 const SUPPORTED_PROTOCOLS = ["hue"];
 
+// ---------------------------------------------------------------------------
+// Dot-notation config helpers
+// ---------------------------------------------------------------------------
+
+/** Auto-coerce a string value: "true"/"false" -> boolean, numeric strings -> number, rest -> string. */
+export function coerceValue(raw: string): string | number | boolean {
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  if (raw !== "" && isFinite(Number(raw))) return Number(raw);
+  return raw;
+}
+
+/** Set a value in a nested object using a dot-notation path (e.g. "bridges.0.universe"). */
+export function setByPath(obj: Record<string, unknown>, path: string, value: unknown): void {
+  const parts = path.split(".");
+  let current: Record<string, unknown> = obj;
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = parts[i];
+    const nextKey = parts[i + 1];
+    const nextIsIndex = nextKey !== undefined && nextKey !== "" && isFinite(Number(nextKey));
+
+    if (!(key in current) || typeof current[key] !== "object" || current[key] === null) {
+      current[key] = nextIsIndex ? [] : {};
+    }
+    current = current[key] as Record<string, unknown>;
+  }
+
+  const lastKey = parts[parts.length - 1];
+  current[lastKey] = value;
+}
+
+/** Get a value from a nested object using a dot-notation path. Returns undefined if not found. */
+export function getByPath(obj: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = obj;
+
+  for (const key of parts) {
+    if (typeof current !== "object" || current === null) return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+
+  return current;
+}
+
 async function handleConfigCommand(args: string[], configManager: ConfigManager): Promise<void> {
   const subcommand = args[0];
 
@@ -210,9 +265,56 @@ async function handleConfigCommand(args: string[], configManager: ConfigManager)
       process.exit(1);
     }
     await handlePair(protocol, host, configManager);
+  } else if (subcommand === "set") {
+    const key = args[1];
+    const rawValue = args[2];
+    if (!key || rawValue === undefined) {
+      console.error("Usage: artnet-bridge config set <key> <value>");
+      console.error("Examples:");
+      console.error("  artnet-bridge config set artnet.port 6454");
+      console.error("  artnet-bridge config set web.port 9090");
+      console.error("  artnet-bridge config set bridges.0.universe 1");
+      process.exit(1);
+    }
+    const config = configManager.load();
+    const value = coerceValue(rawValue);
+    setByPath(config as unknown as Record<string, unknown>, key, value);
+    configManager.save(config);
+    console.log(`Set ${key} = ${JSON.stringify(value)}`);
+  } else if (subcommand === "get") {
+    const key = args[1];
+    if (!key) {
+      console.error("Usage: artnet-bridge config get <key>");
+      console.error("Examples:");
+      console.error("  artnet-bridge config get artnet.port");
+      console.error("  artnet-bridge config get bridges.0.name");
+      process.exit(1);
+    }
+    const config = configManager.load();
+    const value = getByPath(config as unknown as Record<string, unknown>, key);
+    if (value === undefined) {
+      console.error(`Key not found: ${key}`);
+      process.exit(1);
+    }
+    if (typeof value === "object" && value !== null) {
+      console.log(JSON.stringify(value, null, 2));
+    } else {
+      console.log(String(value));
+    }
+  } else if (subcommand === "show") {
+    const config = configManager.load();
+    console.log(JSON.stringify(config, null, 2));
+    console.log("");
+    console.log("Common settings (use 'artnet-bridge config set <key> <value>'):");
+    console.log("  artnet.bindAddress   ArtNet bind address (default: 0.0.0.0)");
+    console.log("  artnet.port          ArtNet UDP port (default: 6454)");
+    console.log("  web.port             Web UI port (default: 8080)");
+    console.log("  web.enabled          Enable web UI (default: true)");
+    console.log("  bridges.N.universe   ArtNet universe for bridge N (0-based)");
+    console.log("  bridges.N.name       Display name for bridge N");
   } else {
     console.error(`Unknown config subcommand: ${subcommand ?? "(none)"}`);
-    console.error("Available: discover, pair");
+    console.error("Available: discover, pair, set, get, show");
     process.exit(1);
   }
 }

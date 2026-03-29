@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hue Configuration</title>
+<style>
+:root {
+  --bg: #1a1a2e;
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-2: rgba(255, 255, 255, 0.08);
+  --text: #e0e0e0;
+  --muted: rgba(255, 255, 255, 0.6);
+  --border: rgba(255, 255, 255, 0.12);
+  --accent: #7c5cff;
+  --accent-2: #2dd4bf;
+  --danger: #ff5c7a;
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  --radius: 14px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  background: radial-gradient(1200px 500px at 20% -10%, rgba(124,92,255,0.25), transparent 60%),
+    radial-gradient(900px 400px at 110% 10%, rgba(45,212,191,0.15), transparent 55%), var(--bg);
+  color: var(--text);
+}
+.app { max-width: 900px; margin: 0 auto; padding: 24px; }
+h1 { font-size: 1.5rem; margin-bottom: 4px; }
+h1 span { color: var(--accent); }
+.subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+.back-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
+.back-link:hover { text-decoration: underline; }
+
+.bridge-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.bridge-title { font-size: 1.1rem; font-weight: 600; margin: 0 0 4px; }
+.bridge-id { color: var(--muted); font-size: 0.8rem; font-family: var(--mono); margin-bottom: 16px; }
+
+.section-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 16px 0 8px;
+}
+
+.ea-list { list-style: none; padding: 0; margin: 0; }
+.ea-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.ea-item:hover { border-color: var(--accent); }
+.ea-item.selected { border-color: var(--accent); background: rgba(124,92,255,0.1); }
+.ea-item input[type="radio"] { accent-color: var(--accent); }
+.ea-name { font-weight: 500; }
+.ea-status { color: var(--muted); font-size: 0.8rem; margin-left: auto; }
+.ea-channels { color: var(--muted); font-size: 0.8rem; }
+.ea-lights { font-size: 0.8rem; color: var(--muted); margin-top: 4px; padding-left: 28px; width: 100%; }
+
+.light-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.light-chip {
+  padding: 8px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.light-chip.in-ea { border-color: var(--accent); color: var(--accent); }
+
+.resource-list { list-style: none; padding: 0; margin: 0; }
+.resource-item {
+  padding: 6px 12px;
+  background: var(--panel-2);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.save-row { margin-top: 16px; display: flex; align-items: center; gap: 12px; }
+.save-msg { font-size: 0.85rem; color: var(--accent-2); }
+.save-err { font-size: 0.85rem; color: var(--danger); }
+
+.loading { color: var(--muted); font-style: italic; }
+.error-text { color: var(--danger); }
+.empty-text { color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="app">
+  <a href="/" class="back-link">&larr; Back to dashboard</a>
+  <h1><span>Hue</span> Configuration</h1>
+  <p class="subtitle">Manage entertainment areas, lights, rooms and zones for each Hue bridge.</p>
+
+  <div id="content">
+    <p class="loading">Loading bridge data...</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  var BASE = "/protocol/hue";
+  var contentEl = document.getElementById("content");
+
+  function el(tag, className, text) {
+    var e = document.createElement(tag);
+    if (className) e.className = className;
+    if (text !== undefined) e.textContent = String(text);
+    return e;
+  }
+
+  function fetchJson(path) {
+    return fetch(BASE + path).then(function(res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+
+  function init() {
+    fetch("/api/status").then(function(res) {
+      if (!res.ok) throw new Error("Failed to fetch status");
+      return res.json();
+    }).then(function(status) {
+      var bridgeIds = Object.keys(status.bridges || {});
+      if (bridgeIds.length === 0) {
+        contentEl.textContent = "";
+        contentEl.appendChild(el("p", "error-text", "No Hue bridges connected."));
+        return;
+      }
+
+      contentEl.textContent = "";
+      var chain = Promise.resolve();
+      bridgeIds.forEach(function(bridgeId) {
+        chain = chain.then(function() {
+          return renderBridge(bridgeId, status.bridges[bridgeId]);
+        });
+      });
+      return chain;
+    }).catch(function(e) {
+      contentEl.textContent = "";
+      contentEl.appendChild(el("p", "error-text", "Failed to load: " + e.message));
+    });
+  }
+
+  function renderBridge(bridgeId, bridgeStatus) {
+    var section = el("div", "bridge-section");
+    section.appendChild(el("div", "bridge-title", bridgeId));
+    var statusText = bridgeStatus.connected ? "Connected" : "Disconnected";
+    if (bridgeStatus.streaming) statusText += " | Streaming";
+    section.appendChild(el("div", "bridge-id", statusText));
+    contentEl.appendChild(section);
+
+    return Promise.all([
+      fetchJson("/entertainment-areas/" + encodeURIComponent(bridgeId)),
+      fetchJson("/lights/" + encodeURIComponent(bridgeId)),
+      fetchJson("/rooms/" + encodeURIComponent(bridgeId)),
+      fetchJson("/zones/" + encodeURIComponent(bridgeId)),
+      fetchJson("/scenes/" + encodeURIComponent(bridgeId)),
+      fetch("/api/config").then(function(r) { return r.ok ? r.json() : null; }),
+    ]).then(function(results) {
+      var entertainmentAreas = results[0];
+      var lights = results[1];
+      var rooms = results[2];
+      var zones = results[3];
+      var scenes = results[4];
+      var config = results[5];
+
+      // Entertainment Areas
+      section.appendChild(el("div", "section-label", "Entertainment Areas"));
+
+      if (entertainmentAreas.length === 0) {
+        section.appendChild(el("p", "empty-text", "No entertainment areas configured on this bridge."));
+      } else {
+        var currentEntConfigId = null;
+        if (config && Array.isArray(config.bridges)) {
+          var bridgeCfg = config.bridges.find(function(b) { return b.id === bridgeId; });
+          if (bridgeCfg && bridgeCfg.protocolConfig) {
+            currentEntConfigId = bridgeCfg.protocolConfig.entertainmentConfigId || null;
+          }
+        }
+
+        var listEl = el("ul", "ea-list");
+
+        entertainmentAreas.forEach(function(ea) {
+          var isSelected = ea.id === currentEntConfigId;
+          var li = el("li", "ea-item" + (isSelected ? " selected" : ""));
+
+          var radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = "ea-" + bridgeId;
+          radio.value = ea.id;
+          radio.checked = isSelected;
+          radio.addEventListener("change", function() {
+            listEl.querySelectorAll(".ea-item").forEach(function(item) { item.classList.remove("selected"); });
+            li.classList.add("selected");
+          });
+          li.addEventListener("click", function(evt) {
+            if (evt.target !== radio) {
+              radio.checked = true;
+              radio.dispatchEvent(new Event("change"));
+            }
+          });
+
+          li.appendChild(radio);
+          li.appendChild(el("span", "ea-name", ea.metadata ? ea.metadata.name : ea.id));
+
+          var channelCount = ea.channels ? ea.channels.length : 0;
+          li.appendChild(el("span", "ea-channels", channelCount + " channel" + (channelCount !== 1 ? "s" : "")));
+          li.appendChild(el("span", "ea-status", ea.status || ""));
+
+          // Show lights in this entertainment area
+          if (ea.channels && ea.channels.length > 0) {
+            var lightIds = new Set();
+            ea.channels.forEach(function(ch) {
+              ch.members.forEach(function(m) { lightIds.add(m.service.rid); });
+            });
+            if (lightIds.size > 0) {
+              var lightNames = [];
+              lightIds.forEach(function(lid) {
+                var found = lights.find(function(l) { return l.id === lid; });
+                lightNames.push(found ? found.metadata.name : lid);
+              });
+              li.appendChild(el("div", "ea-lights", "Lights: " + lightNames.join(", ")));
+            }
+          }
+
+          listEl.appendChild(li);
+        });
+        section.appendChild(listEl);
+
+        // Save button
+        var saveRow = el("div", "save-row");
+        var saveBtn = el("button", "btn btn-primary", "Save Selection");
+        var saveMsg = el("span", "save-msg");
+
+        saveBtn.addEventListener("click", function() {
+          var checked = listEl.querySelector('input[type="radio"]:checked');
+          if (!checked) return;
+          saveBtn.disabled = true;
+          saveMsg.className = "save-msg";
+          saveMsg.textContent = "Saving...";
+
+          fetch("/api/config").then(function(r) {
+            if (!r.ok) throw new Error("Failed to read config");
+            return r.json();
+          }).then(function(cfg) {
+            var idx = cfg.bridges.findIndex(function(b) { return b.id === bridgeId; });
+            if (idx === -1) throw new Error("Bridge not found in config");
+            if (!cfg.bridges[idx].protocolConfig) cfg.bridges[idx].protocolConfig = {};
+            cfg.bridges[idx].protocolConfig.entertainmentConfigId = checked.value;
+            return fetch("/api/config", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(cfg),
+            });
+          }).then(function(putRes) {
+            if (!putRes.ok) throw new Error("Save failed: HTTP " + putRes.status);
+            saveMsg.className = "save-msg";
+            saveMsg.textContent = "Saved! Restart the bridge to apply.";
+          }).catch(function(e) {
+            saveMsg.className = "save-err";
+            saveMsg.textContent = "Error: " + e.message;
+          }).finally(function() {
+            saveBtn.disabled = false;
+          });
+        });
+        saveRow.appendChild(saveBtn);
+        saveRow.appendChild(saveMsg);
+        section.appendChild(saveRow);
+      }
+
+      // Lights
+      section.appendChild(el("div", "section-label", "Lights"));
+      var lightGrid = el("div", "light-list");
+      var entLightIds = new Set();
+      entertainmentAreas.forEach(function(ea) {
+        if (ea.channels) ea.channels.forEach(function(ch) {
+          ch.members.forEach(function(m) { entLightIds.add(m.service.rid); });
+        });
+      });
+      lights.forEach(function(light) {
+        var chip = el("div", "light-chip" + (entLightIds.has(light.id) ? " in-ea" : ""), light.metadata.name);
+        chip.title = light.id;
+        lightGrid.appendChild(chip);
+      });
+      section.appendChild(lightGrid);
+
+      // Rooms
+      if (rooms.length > 0) {
+        section.appendChild(el("div", "section-label", "Rooms"));
+        var roomList = el("ul", "resource-list");
+        rooms.forEach(function(room) {
+          var li = el("li", "resource-item", room.metadata.name);
+          li.title = room.id;
+          roomList.appendChild(li);
+        });
+        section.appendChild(roomList);
+      }
+
+      // Zones
+      if (zones.length > 0) {
+        section.appendChild(el("div", "section-label", "Zones"));
+        var zoneList = el("ul", "resource-list");
+        zones.forEach(function(zone) {
+          var li = el("li", "resource-item", zone.metadata.name);
+          li.title = zone.id;
+          zoneList.appendChild(li);
+        });
+        section.appendChild(zoneList);
+      }
+
+      // Scenes
+      if (scenes.length > 0) {
+        section.appendChild(el("div", "section-label", "Scenes"));
+        var sceneList = el("ul", "resource-list");
+        scenes.forEach(function(scene) {
+          var li = el("li", "resource-item", scene.metadata.name);
+          li.title = scene.id;
+          sceneList.appendChild(li);
+        });
+        section.appendChild(sceneList);
+      }
+
+    }).catch(function(e) {
+      section.appendChild(el("p", "error-text", "Failed to load bridge data: " + e.message));
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

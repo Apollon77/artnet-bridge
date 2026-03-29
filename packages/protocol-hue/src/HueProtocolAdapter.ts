@@ -28,6 +28,7 @@ import {
 } from "./HueDtlsStream.js";
 import { discoverBridges as discoverBridgesImpl } from "./HueDiscovery.js";
 import { pairWithBridge as pairWithBridgeImpl } from "./HuePairing.js";
+import { createHueWebHandlers } from "./web/HueWebHandlers.js";
 
 // Re-export the interfaces used by the dependency injection types
 type HueClipClient = HueClipClientImpl;
@@ -193,8 +194,39 @@ const NETWORK_ERROR_CODES = [
   "ENOTFOUND",
 ];
 
+/** Check if a Hue light supports color (has a color gamut). */
+function lightHasColor(light: HueLight | undefined): boolean {
+  return light?.color !== undefined;
+}
+
 function isNetworkError(message: string): boolean {
   return NETWORK_ERROR_CODES.some((code) => message.includes(code));
+}
+
+// ---------------------------------------------------------------------------
+// Express type guards (adapter receives `unknown` from protocol interface)
+// ---------------------------------------------------------------------------
+
+/** Minimal shape of an Express Router, used for duck-type narrowing. */
+interface RouterLike {
+  use(...args: unknown[]): void;
+  get(path: string, ...handlers: unknown[]): void;
+}
+
+/**
+ * Duck-type guard for Express Router.
+ * Uses `"prop" in obj` narrowing so no `as` cast is needed beyond the
+ * initial object check.
+ */
+function isRouterLike(obj: unknown): obj is RouterLike {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "use" in obj &&
+    typeof obj.use === "function" &&
+    "get" in obj &&
+    typeof obj.get === "function"
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -562,9 +594,16 @@ export class HueProtocolAdapter implements ProtocolAdapter {
   // -----------------------------------------------------------------------
 
   registerWebHandlers(router: unknown): void {
-    // Future: register Hue-specific routes under the provided router.
-    // For now, this is a no-op placeholder.
-    void router;
+    if (!isRouterLike(router)) {
+      return;
+    }
+
+    // Mount API + static page handlers created by the web-handler factory
+    const handlers = createHueWebHandlers((bridgeId: string) => {
+      const state = this.bridges.get(bridgeId);
+      return state?.client;
+    });
+    router.use("/", handlers);
   }
 
   // -----------------------------------------------------------------------
@@ -742,10 +781,11 @@ export class HueProtocolAdapter implements ProtocolAdapter {
               type: "light",
               bridgeId,
               channelId: channel.channel_id,
+              hasColor: light?.color !== undefined,
             },
             controlMode: "realtime",
             category: "realtime-light",
-            channelLayout: { type: "rgb" },
+            channelLayout: lightHasColor(light) ? { type: "rgb" } : { type: "brightness" },
           });
         }
       }
@@ -762,10 +802,11 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           name: light.metadata.name,
           type: "light",
           bridgeId,
+          hasColor: light.color !== undefined,
         },
         controlMode: "limited",
         category: "light",
-        channelLayout: { type: "rgb" },
+        channelLayout: lightHasColor(light) ? { type: "rgb" } : { type: "brightness" },
       });
     }
 
@@ -780,9 +821,14 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         return;
       }
 
-      // Determine channel layout: check if any child is a color-capable light
-      // For simplicity, assume rooms/zones with lights are brightness-controllable
-      const layout: ChannelLayout = { type: "brightness" };
+      // Check if any light in the group supports color
+      const groupLightIds = group.children
+        .filter((c) => c.rtype === "light")
+        .map((c) => c.rid);
+      const hasAnyColorLight = groupLightIds.some((lid) =>
+        lights.some((l) => l.id === lid && lightHasColor(l)),
+      );
+      const layout: ChannelLayout = hasAnyColorLight ? { type: "rgb" } : { type: "brightness" };
 
       entities.push({
         id: gl.id,

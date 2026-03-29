@@ -8,6 +8,12 @@ export interface HueLight {
   id: string;
   metadata: { name: string };
   type: string;
+  /** Present if light supports color (xy gamut) */
+  color?: { gamut_type?: string };
+  /** Present if light supports dimming */
+  dimming?: { brightness?: number };
+  /** Owner device reference */
+  owner?: { rid: string; rtype: string };
 }
 
 export interface HueRoom {

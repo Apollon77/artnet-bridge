@@ -181,6 +181,22 @@ artnet-bridge --port 9090            # Custom web UI port
 artnet-bridge --no-web               # Start without web UI
 artnet-bridge config discover hue        # Find Hue bridges on network
 artnet-bridge config pair hue <host>     # Pair with a Hue bridge
+artnet-bridge config set <key> <value>   # Set a config value (dot-notation)
+artnet-bridge config get <key>           # Get a config value
+artnet-bridge config show                # Show full config (pretty-printed)
+```
+
+Config set/get examples:
+
+```bash
+artnet-bridge config set artnet.port 6454
+artnet-bridge config set web.port 9090
+artnet-bridge config set web.enabled false
+artnet-bridge config set bridges.0.universe 1
+artnet-bridge config set bridges.0.name "Living Room"
+artnet-bridge config get artnet.port          # prints: 6454
+artnet-bridge config get bridges.0.name       # prints: Living Room
+artnet-bridge config show                     # prints full config JSON
 ```
 
 See [CLI documentation](docs/cli.md) for full details.

@@ -48,6 +48,54 @@ Discovering Hue bridges...
 
 Supported protocols: `hue`
 
+### Set
+
+Set a configuration value using dot-notation path. Values are auto-coerced: `"true"`/`"false"` become booleans, numeric strings become numbers, everything else stays a string.
+
+```bash
+artnet-bridge config set <key> <value>
+```
+
+Examples:
+
+```bash
+artnet-bridge config set artnet.bindAddress 192.168.1.5
+artnet-bridge config set artnet.port 6454
+artnet-bridge config set web.port 9090
+artnet-bridge config set web.enabled false
+artnet-bridge config set bridges.0.universe 1
+artnet-bridge config set bridges.0.name "Living Room"
+```
+
+The config is validated after setting the value. If the resulting config is invalid, the change is rejected and an error is printed.
+
+### Get
+
+Read a single configuration value using dot-notation path. Objects and arrays are printed as pretty-printed JSON; scalars are printed as plain text.
+
+```bash
+artnet-bridge config get <key>
+```
+
+Examples:
+
+```bash
+artnet-bridge config get artnet.port       # prints: 6454
+artnet-bridge config get web.enabled       # prints: true
+artnet-bridge config get bridges.0.name    # prints: Living Room
+artnet-bridge config get artnet            # prints the full artnet section as JSON
+```
+
+Exits with code 1 if the key is not found.
+
+### Show
+
+Print the entire current config as pretty-printed JSON.
+
+```bash
+artnet-bridge config show
+```
+
 ### Pair
 
 Pair with a bridge. The protocol name and host address are required. For Hue, press the link button on the bridge before running.
