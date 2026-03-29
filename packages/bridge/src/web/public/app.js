@@ -886,7 +886,7 @@ function mappingChannelWidth(mode) {
 
 function mappingCompatibleModes(layoutType) {
   switch (layoutType) {
-    case "rgb": return ["8bit", "8bit-dimmable", "16bit"];
+    case "rgb": return ["8bit-dimmable", "8bit", "16bit"];
     case "rgb-dimmable": return ["8bit-dimmable"];
     case "brightness": return ["brightness"];
     case "scene-selector": return ["scene-selector"];
