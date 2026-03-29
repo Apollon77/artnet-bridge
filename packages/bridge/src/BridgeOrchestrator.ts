@@ -63,6 +63,11 @@ export class BridgeOrchestrator {
   private lastFrameTime?: number;
   private seenUniverses = new Set<number>();
 
+  // Poll watchdog
+  private lastPollTime = 0;
+  private pollLostLogged = false;
+  private pollWatchdog?: ReturnType<typeof setInterval>;
+
   // Stats counters (reset each stats interval)
   private statsIntervalTimer?: ReturnType<typeof setInterval>;
   private statsFrameCount = 0;
@@ -136,9 +141,17 @@ export class BridgeOrchestrator {
     this.artnet.on("poll", (info: { address: string }) => {
       if (!seenPollSources.has(info.address)) {
         seenPollSources.add(info.address);
-        console.log(`[ArtNet] Poll received from ${info.address} (first from this source)`);
+        console.log(`[ArtNet] Controller discovered: ${info.address}`);
       }
+      this.lastPollTime = Date.now();
+      this.pollLostLogged = false;
     });
+    this.pollWatchdog = setInterval(() => {
+      if (this.lastPollTime > 0 && Date.now() - this.lastPollTime > 10000 && !this.pollLostLogged) {
+        console.log("[ArtNet] No polls received for 10s \u2014 controller may have disconnected");
+        this.pollLostLogged = true;
+      }
+    }, 5000);
     this.artnet.on("dmx", this.dmxHandler);
     await this.artnet.start();
     console.log(
@@ -164,10 +177,14 @@ export class BridgeOrchestrator {
   async stop(): Promise<void> {
     this.running = false;
 
-    // Stop stats timer
+    // Stop timers
     if (this.statsIntervalTimer) {
       clearInterval(this.statsIntervalTimer);
       this.statsIntervalTimer = undefined;
+    }
+    if (this.pollWatchdog) {
+      clearInterval(this.pollWatchdog);
+      this.pollWatchdog = undefined;
     }
 
     // Stop schedulers
