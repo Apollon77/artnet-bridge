@@ -109,6 +109,8 @@ interface BridgeState {
   rateLimitBackoffUntil: number;
   /** Debug counter for realtime update logging */
   realtimeLogCount: number;
+  /** Prevents multiple concurrent streaming retry attempts */
+  streamingRetryPending: boolean;
   /** Timer for periodic network-error retry */
   networkRetryTimer: ReturnType<typeof setInterval> | null;
   /** Timer for periodic entertainment claim retry */
@@ -303,6 +305,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           lastUpdate: 0,
           rateLimitBackoffUntil: 0,
           realtimeLogCount: 0,
+          streamingRetryPending: false,
           networkRetryTimer: null,
           entertainmentRetryTimer: null,
         };
@@ -487,8 +490,25 @@ export class HueProtocolAdapter implements ProtocolAdapter {
 
   async handleRealtimeUpdate(bridgeId: string, updates: EntityUpdate[]): Promise<void> {
     const state = this.bridges.get(bridgeId);
-    if (!state?.dtlsStream) {
-      console.log(`[Hue] handleRealtimeUpdate: no DTLS stream for ${bridgeId}, connected=${state?.connected}, streaming=${state?.streaming}`);
+    if (!state) return;
+
+    if (!state.dtlsStream) {
+      // DTLS not connected — attempt to start streaming if not already retrying
+      if (!state.entertainmentRetryTimer && state.entertainmentConfig && !state.streamingRetryPending) {
+        state.streamingRetryPending = true;
+        console.log(`[Hue] No DTLS stream for ${bridgeId} — attempting to start entertainment streaming`);
+        this.startEntertainmentStreaming(
+          state,
+          state.client,
+          state.config,
+          state.entertainmentConfig,
+        ).then(() => {
+          state.streamingRetryPending = false;
+        }).catch((err) => {
+          state.streamingRetryPending = false;
+          console.warn(`[Hue] Failed to start entertainment streaming: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      }
       return;
     }
 
