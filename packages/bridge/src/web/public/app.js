@@ -958,26 +958,41 @@ function renderMappingEditor(bridgeId) {
   root.textContent = "";
   root.appendChild(el("strong", null, "Channel Mapping"));
 
+  // Selection state for each entity (for map-selected / clear-selected)
+  var mappingSelected = new Map();
+  for (var s = 0; s < mappingState.length; s++) {
+    // Default: select entities that are already mapped
+    mappingSelected.set(mappingState[s].entityId, mappingState[s].dmxStart != null);
+  }
+
   var actionsDiv = el("div", "mapping-actions");
   actionsDiv.style.marginTop = "8px";
 
-  actionsDiv.appendChild(btn("Auto-map All", "small", function () {
+  actionsDiv.appendChild(btn("Map Selected", "small primary", function () {
+    // Find the highest currently used address to continue from
     var next = 1;
     for (var i = 0; i < mappingState.length; i++) {
-      mappingState[i].dmxStart = next;
-      mappingState[i].mode = mappingDefaultMode(mappingState[i].layoutType);
-      next += mappingChannelWidth(mappingState[i].mode);
+      if (mappingState[i].dmxStart != null) {
+        var end = mappingState[i].dmxStart + mappingChannelWidth(mappingState[i].mode);
+        if (end > next) next = end;
+      }
+    }
+    // Map only selected, unmapped entities
+    for (var i = 0; i < mappingState.length; i++) {
+      if (mappingSelected.get(mappingState[i].entityId) && mappingState[i].dmxStart == null) {
+        mappingState[i].dmxStart = next;
+        mappingState[i].mode = mappingDefaultMode(mappingState[i].layoutType);
+        next += mappingChannelWidth(mappingState[i].mode);
+      }
     }
     rebuildTable();
   }));
 
-  actionsDiv.appendChild(btn("Auto-map RGB 8bit", "small", function () {
-    var next = 1;
+  actionsDiv.appendChild(btn("Clear Selected", "small danger", function () {
     for (var i = 0; i < mappingState.length; i++) {
-      if (mappingState[i].layoutType === "rgb") {
-        mappingState[i].dmxStart = next;
-        mappingState[i].mode = "8bit";
-        next += mappingChannelWidth("8bit");
+      if (mappingSelected.get(mappingState[i].entityId)) {
+        mappingState[i].dmxStart = null;
+        mappingState[i].mode = mappingState[i].compatibleModes[0];
       }
     }
     rebuildTable();
@@ -1096,6 +1111,23 @@ function renderMappingEditor(bridgeId) {
 
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
+
+    // Select-all checkbox header
+    var thCheck = document.createElement("th");
+    var selectAllCb = document.createElement("input");
+    selectAllCb.type = "checkbox";
+    // Check if all are selected
+    var allSelected = mappingState.every(function (ms) { return mappingSelected.get(ms.entityId); });
+    selectAllCb.checked = allSelected;
+    selectAllCb.addEventListener("change", function () {
+      for (var i = 0; i < mappingState.length; i++) {
+        mappingSelected.set(mappingState[i].entityId, this.checked);
+      }
+      rebuildTable();
+    });
+    thCheck.appendChild(selectAllCb);
+    headRow.appendChild(thCheck);
+
     var headers = ["Entity Name", "DMX Start", "Mode", "DMX End"];
     for (var h = 0; h < headers.length; h++) {
       var th = document.createElement("th");
@@ -1117,6 +1149,22 @@ function renderMappingEditor(bridgeId) {
       (function (idx) {
         var ms = mappingState[idx];
         var tr = document.createElement("tr");
+
+        // Checkbox
+        var tdCheck = document.createElement("td");
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = mappingSelected.get(ms.entityId) || false;
+        cb.addEventListener("change", function () {
+          mappingSelected.set(ms.entityId, this.checked);
+          // Update select-all state
+          var allCb = table.querySelector("thead input[type='checkbox']");
+          if (allCb) {
+            allCb.checked = mappingState.every(function (m) { return mappingSelected.get(m.entityId); });
+          }
+        });
+        tdCheck.appendChild(cb);
+        tr.appendChild(tdCheck);
 
         // Entity name
         var tdName = document.createElement("td");
