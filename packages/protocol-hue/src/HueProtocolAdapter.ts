@@ -305,7 +305,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         };
 
         // Fetch all resources
-        const [lights, rooms, zones, groupedLights, scenes, entertainmentConfigs] =
+        const [lights, rooms, zones, groupedLights, scenes, entertainmentConfigs, entertainmentServices] =
           await Promise.all([
             client.getLights(),
             client.getRooms(),
@@ -313,7 +313,19 @@ export class HueProtocolAdapter implements ProtocolAdapter {
             client.getGroupedLights(),
             client.getScenes(),
             client.getEntertainmentConfigurations(),
+            client.getEntertainmentServices().catch(() => []),
           ]);
+
+        // Build entertainment service ID → light lookup
+        // Entertainment channel members reference entertainment services, not lights.
+        // Resolve: entertainment service → owner device → light (same owner device)
+        const entServiceToLight = new Map<string, HueLight>();
+        for (const svc of entertainmentServices) {
+          if (svc.owner?.rid) {
+            const light = lights.find((l) => l.owner?.rid === svc.owner.rid);
+            if (light) entServiceToLight.set(svc.id, light);
+          }
+        }
 
         // Find the entertainment config if one is specified
         let activeEntConfig: HueEntertainmentConfiguration | null = null;
@@ -356,8 +368,8 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           groupedLights,
           scenes,
           activeEntConfig,
-          state.entertainmentLightIds,
           state.entityToChannel,
+          entServiceToLight,
         );
 
         // Start entertainment streaming if configured
@@ -773,18 +785,27 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     groupedLights: HueGroupedLight[],
     scenes: HueScene[],
     entertainmentConfig: HueEntertainmentConfiguration | null,
-    entertainmentLightIds: Set<string>,
     entityToChannel: Map<string, number>,
+    entServiceToLight: Map<string, HueLight>,
   ): Entity[] {
     const entities: Entity[] = [];
+
+    // Build a set of actual light IDs that are in the entertainment area
+    const entertainmentActualLightIds = new Set<string>();
 
     // 1. Entertainment area lights (realtime)
     if (entertainmentConfig) {
       for (const channel of entertainmentConfig.channels) {
         for (const member of channel.members) {
-          const light = lights.find((l) => l.id === member.service.rid);
+          // Resolve: entertainment service → light via device owner chain
+          const light =
+            lights.find((l) => l.id === member.service.rid) ??
+            entServiceToLight.get(member.service.rid);
           const entityId = member.service.rid;
           entityToChannel.set(entityId, channel.channel_id);
+
+          if (light) entertainmentActualLightIds.add(light.id);
+
           entities.push({
             id: entityId,
             metadata: {
@@ -796,15 +817,17 @@ export class HueProtocolAdapter implements ProtocolAdapter {
             },
             controlMode: "realtime",
             category: "realtime-light",
-            channelLayout: lightHasColor(light) ? { type: "rgb" } : { type: "brightness" },
+            // Entertainment lights are always color-capable (Hue requirement)
+            channelLayout: { type: "rgb" },
           });
         }
       }
     }
 
     // 2. Non-entertainment lights (limited)
+    // Exclude lights that are in the entertainment area (by actual light ID)
     for (const light of lights) {
-      if (entertainmentLightIds.has(light.id)) {
+      if (entertainmentActualLightIds.has(light.id)) {
         continue;
       }
       entities.push({
