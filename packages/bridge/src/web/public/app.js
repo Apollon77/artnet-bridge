@@ -1120,20 +1120,25 @@ function renderMappingEditor(bridgeId) {
         errors.push({ index: i, msg: ms.entityName + ": DMX range exceeds 512 (ends at " + end + ")" });
       }
 
-      // Check overlaps with other mapped entities
+      // Check overlaps with other mapped entities — collect all that overlap with this one
+      var overlapping = [];
+      var overlapIndices = [];
       for (var j = i + 1; j < mappingState.length; j++) {
         var other = mappingState[j];
         if (other.dmxStart == null) continue;
         var otherWidth = mappingChannelWidth(other.mode);
         var otherEnd = other.dmxStart + otherWidth - 1;
-        // Overlap if ranges intersect
         if (ms.dmxStart <= otherEnd && other.dmxStart <= end) {
-          errors.push({
-            index: i,
-            indexB: j,
-            msg: ms.entityName + " (" + ms.dmxStart + "-" + end + ") overlaps with " + other.entityName + " (" + other.dmxStart + "-" + otherEnd + ")"
-          });
+          overlapping.push(other.entityName + " (" + other.dmxStart + "-" + otherEnd + ")");
+          overlapIndices.push(j);
         }
+      }
+      if (overlapping.length > 0) {
+        errors.push({
+          index: i,
+          indices: overlapIndices,
+          msg: ms.entityName + " (" + ms.dmxStart + "-" + end + ") overlaps with " + overlapping.join(", ")
+        });
       }
     }
     // Warn about group/light overlap: if a group and individual lights are both mapped,
@@ -1216,8 +1221,15 @@ function renderMappingEditor(bridgeId) {
     var errors = validate();
     var errorIndices = new Set();
     for (var e = 0; e < errors.length; e++) {
-      errorIndices.add(errors[e].index);
-      if (errors[e].indexB != null) errorIndices.add(errors[e].indexB);
+      if (!errors[e].isWarning) {
+        errorIndices.add(errors[e].index);
+        if (errors[e].indices) {
+          for (var k = 0; k < errors[e].indices.length; k++) {
+            errorIndices.add(errors[e].indices[k]);
+          }
+        }
+        if (errors[e].indexB != null) errorIndices.add(errors[e].indexB);
+      }
     }
 
     var tbody = document.createElement("tbody");
