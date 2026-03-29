@@ -1145,11 +1145,13 @@ function renderMappingEditor(bridgeId) {
       return ms.dmxStart != null && ms.entityType === "light";
     });
     if (mappedGroups.length > 0 && mappedLights.length > 0) {
+      var lightNames = mappedLights.map(function (ms) { return "\"" + ms.entityName + "\""; });
       for (var g = 0; g < mappedGroups.length; g++) {
         errors.push({
           index: mappingState.indexOf(mappedGroups[g]),
           isWarning: true,
-          msg: "\u26a0 Group \"" + mappedGroups[g].entityName + "\" is mapped alongside individual lights. " +
+          msg: "\u26a0 Group \"" + mappedGroups[g].entityName + "\" is mapped alongside " +
+            lightNames.join(", ") + ". " +
             "Group commands (on/off, brightness) will affect all lights in the group and may override individual light settings."
         });
       }
