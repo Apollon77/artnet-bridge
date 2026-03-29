@@ -291,10 +291,15 @@ export class BridgeOrchestrator {
     this.statsFrameCounts[universe] = (this.statsFrameCounts[universe] ?? 0) + 1;
     this.lastFrameTime = Date.now();
 
-    // Log first time we see a universe
+    // Log first time we see a universe — including first few channel values for debugging
     if (!this.seenUniverses.has(universe)) {
       this.seenUniverses.add(universe);
-      console.log(`[ArtNet] First data on universe ${universe}`);
+      const preview = Array.from(data.subarray(0, Math.min(data.length, 20)))
+        .map((v) => String(v))
+        .join(",");
+      console.log(
+        `[ArtNet] First data on universe ${universe}: ${data.length} bytes, first 20: [${preview}]`,
+      );
     }
 
     // Accumulate partial frames into a full 512-byte universe buffer
