@@ -198,6 +198,8 @@ async function renderBridgeCards() {
     }
     const toggleBtn = btn("Show Details", "small btn-toggle-detail");
     actions.appendChild(toggleBtn);
+    const mappingBtn = btn("Channel Mapping", "small");
+    actions.appendChild(mappingBtn);
     header.appendChild(actions);
     card.appendChild(header);
 
@@ -206,10 +208,15 @@ async function renderBridgeCards() {
       entityCount + " entities (" + realtimeCount + " realtime, " + limitedCount + " limited) \u00b7 Universe " + bridge.universe);
     card.appendChild(meta);
 
-    // Detail container
+    // Detail container (operational view: entities + test controls + budgets)
     const detailDiv = el("div", "bridge-detail");
     detailDiv.id = "detail-" + bridge.id;
     card.appendChild(detailDiv);
+
+    // Mapping container (separate toggle)
+    const mappingDiv = el("div", "bridge-detail");
+    mappingDiv.id = "mapping-wrapper-" + bridge.id;
+    card.appendChild(mappingDiv);
 
     toggleBtn.addEventListener("click", () => {
       const isOpen = detailDiv.classList.contains("open");
@@ -217,6 +224,27 @@ async function renderBridgeCards() {
         closeDetail(bridge.id, detailDiv, toggleBtn);
       } else {
         openDetail(bridge.id, detailDiv, toggleBtn);
+      }
+    });
+
+    mappingBtn.addEventListener("click", () => {
+      const isOpen = mappingDiv.classList.contains("open");
+      if (isOpen) {
+        mappingDiv.classList.remove("open");
+        mappingDiv.textContent = "";
+        mappingBtn.textContent = "Channel Mapping";
+      } else {
+        mappingDiv.classList.add("open");
+        // Need entities loaded first
+        const cached = bridgeEntitiesCache.get(bridge.id);
+        if (cached) {
+          renderMappingEditor(bridge.id);
+        } else {
+          loadEntities(bridge.id).then(function () {
+            renderMappingEditor(bridge.id);
+          });
+        }
+        mappingBtn.textContent = "Hide Mapping";
       }
     });
 
@@ -237,28 +265,21 @@ function openDetail(bridgeId, detailDiv, toggleBtn) {
   detailDiv.appendChild(wsStatusEl);
   detailDiv.appendChild(el("div", "divider"));
 
+  // Mapped entities table (with checkboxes for test selection)
   const entitiesContainer = el("div", "muted", "Loading entities...");
   entitiesContainer.id = "entities-" + bridgeId;
   detailDiv.appendChild(entitiesContainer);
 
   detailDiv.appendChild(el("div", "divider"));
 
-  // Channel mapping editor
-  const mappingSection = document.createElement("div");
-  mappingSection.id = "mapping-" + bridgeId;
-  detailDiv.appendChild(mappingSection);
-
-  detailDiv.appendChild(el("div", "divider"));
-
-  const budgetsContainer = el("div");
-  budgetsContainer.id = "budgets-" + bridgeId;
-  detailDiv.appendChild(budgetsContainer);
-
-  detailDiv.appendChild(el("div", "divider"));
-
-  // Test controls
+  // Test controls (right after entities — shares the entity checkboxes)
   const testSection = document.createElement("div");
   testSection.appendChild(el("strong", null, "Test controls"));
+  const testHint = el("div", "muted");
+  testHint.style.fontSize = "0.8rem";
+  testHint.style.marginTop = "4px";
+  testHint.textContent = "Use the checkboxes above to select which entities to test.";
+  testSection.appendChild(testHint);
   const testRow = el("div", "row");
   testRow.style.marginTop = "8px";
 
@@ -293,10 +314,15 @@ function openDetail(bridgeId, detailDiv, toggleBtn) {
   testSection.appendChild(testStatusEl);
   detailDiv.appendChild(testSection);
 
-  // Load entities via REST first, then render mapping editor
-  loadEntities(bridgeId).then(function () {
-    renderMappingEditor(bridgeId);
-  });
+  detailDiv.appendChild(el("div", "divider"));
+
+  // Rate limit budgets
+  const budgetsContainer = el("div");
+  budgetsContainer.id = "budgets-" + bridgeId;
+  detailDiv.appendChild(budgetsContainer);
+
+  // Load entities
+  loadEntities(bridgeId);
 
   // Open WebSocket for live status
   connectWs(bridgeId);
@@ -374,18 +400,7 @@ function renderEntities(bridgeId, entities, liveData) {
   if (mapped.length === 0) {
     var hint = el("div", "muted");
     hint.style.marginBottom = "8px";
-    hint.textContent = "No entities mapped to DMX channels yet. ";
-    var mapLink = document.createElement("a");
-    mapLink.href = "#";
-    mapLink.textContent = "Use the Channel Mapping editor below";
-    mapLink.style.color = "var(--accent)";
-    mapLink.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      var mappingSection = document.getElementById("mapping-" + bridgeId);
-      if (mappingSection) mappingSection.scrollIntoView({ behavior: "smooth" });
-    });
-    hint.appendChild(mapLink);
-    hint.appendChild(document.createTextNode(" to assign DMX addresses."));
+    hint.textContent = "No entities mapped to DMX channels yet. Click the \"Channel Mapping\" button above to assign DMX addresses.";
     root.appendChild(hint);
 
     // Also show unmapped count
@@ -900,7 +915,7 @@ function mappingDefaultMode(layoutType) {
 }
 
 function renderMappingEditor(bridgeId) {
-  var root = document.getElementById("mapping-" + bridgeId);
+  var root = document.getElementById("mapping-wrapper-" + bridgeId);
   if (!root) return;
 
   var entities = bridgeEntitiesCache.get(bridgeId);
