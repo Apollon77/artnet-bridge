@@ -15,6 +15,7 @@ export interface CliArgs {
   configPath?: string;
   webPort?: number;
   noWeb: boolean;
+  statsIntervalSec?: number;
   command?: string;
   commandArgs: string[];
 }
@@ -23,6 +24,7 @@ export function parseArgs(args: string[]): CliArgs {
   let configPath: string | undefined;
   let webPort: number | undefined;
   let noWeb = false;
+  let statsIntervalSec: number | undefined;
   let command: string | undefined;
   const commandArgs: string[] = [];
 
@@ -34,6 +36,8 @@ export function parseArgs(args: string[]): CliArgs {
       webPort = parseInt(args[++i], 10);
     } else if (arg === "--no-web") {
       noWeb = true;
+    } else if (arg === "--stats-interval" && args[i + 1]) {
+      statsIntervalSec = parseInt(args[++i], 10);
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -44,7 +48,7 @@ export function parseArgs(args: string[]): CliArgs {
     }
   }
 
-  return { configPath, webPort, noWeb, command, commandArgs };
+  return { configPath, webPort, noWeb, statsIntervalSec, command, commandArgs };
 }
 
 function printHelp(): void {
@@ -62,10 +66,11 @@ Usage:
 Supported protocols: hue
 
 Options:
-  --config <path>   Config file path (default: ~/.artnet-bridge/config.json)
-  --port <number>   Web UI port (default: 8080)
-  --no-web          Disable web UI
-  -h, --help        Show this help
+  --config <path>            Config file path (default: ~/.artnet-bridge/config.json)
+  --port <number>            Web UI port (default: 8080)
+  --no-web                   Disable web UI
+  --stats-interval <seconds> Stats log interval (default: 10, 0 = disabled)
+  -h, --help                 Show this help
 
 Config set examples:
   artnet-bridge config set artnet.port 6454
@@ -133,7 +138,9 @@ async function main(): Promise<void> {
   });
 
   // Create orchestrator
-  const orchestrator = new BridgeOrchestrator(config, artnet, adapterFactories);
+  const statsOpts =
+    args.statsIntervalSec !== undefined ? { statsIntervalSec: args.statsIntervalSec } : undefined;
+  const orchestrator = new BridgeOrchestrator(config, artnet, adapterFactories, statsOpts);
 
   const webPort = args.webPort ?? config.web.port;
   const webEnabled = !args.noWeb && config.web.enabled;

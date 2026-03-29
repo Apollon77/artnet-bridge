@@ -61,19 +61,31 @@ export class BridgeOrchestrator {
   private frameCount = 0;
   private frameCounts: Record<number, number> = {};
   private lastFrameTime?: number;
+  private seenUniverses = new Set<number>();
+
+  // Stats counters (reset each stats interval)
+  private statsIntervalTimer?: ReturnType<typeof setInterval>;
+  private statsFrameCount = 0;
+  private statsFrameCounts: Record<number, number> = {};
+  private statsRealtimeChanges: Record<string, number> = {};
+  private statsLimitedDispatches: Record<string, Record<string, number>> = {};
 
   private readonly dmxHandler = (universe: number, data: Uint8Array): void => {
     this.handleDmx(universe, data);
   };
 
+  private readonly statsIntervalSec: number;
+
   constructor(
     config: AppConfig,
     artnet: ArtNetReceiver,
     adapterFactories: Map<string, ProtocolAdapterFactory>,
+    options?: { statsIntervalSec?: number },
   ) {
     this.config = config;
     this.artnet = artnet;
     this.adapterFactories = adapterFactories;
+    this.statsIntervalSec = options?.statsIntervalSec ?? 10;
   }
 
   async start(): Promise<void> {
@@ -85,6 +97,7 @@ export class BridgeOrchestrator {
         continue;
       }
       const adapter = factory(bridgeConfig);
+      console.log(`[Bridge] Connecting adapter: ${adapter.name}`);
       await adapter.connect();
       this.adapters.push(adapter);
     }
@@ -92,13 +105,18 @@ export class BridgeOrchestrator {
     // 2. Get protocol bridges and entities, build adapter lookup + entity index
     for (const adapter of this.adapters) {
       const bridges = await adapter.getBridges();
+      let totalEntities = 0;
       for (const bridge of bridges) {
         this.adapterByBridgeId.set(bridge.id, adapter);
         for (const entity of bridge.entities) {
           this.entityIndex.set(`${bridge.id}:${entity.id}`, entity);
         }
+        totalEntities += bridge.entities.length;
       }
       this.protocolBridges.push(...bridges);
+      console.log(
+        `[Bridge] Adapter ${adapter.name} connected (${bridges.length} bridges, ${totalEntities} entities)`,
+      );
     }
 
     // 3. Build DmxMapper from config channel mappings + entities
@@ -113,9 +131,15 @@ export class BridgeOrchestrator {
     const universes = [...new Set(this.config.bridges.map((b) => b.universe))];
     this.artnet.setOutputUniverses(universes);
 
-    this.artnet.on("error", (err) => console.error("ArtNet error:", err));
+    this.artnet.on("error", (err) => console.error("[ArtNet] Error:", err));
+    this.artnet.on("poll", (info: { address: string }) => {
+      console.log(`[ArtNet] Poll received from ${info.address}`);
+    });
     this.artnet.on("dmx", this.dmxHandler);
     await this.artnet.start();
+    console.log(
+      `[ArtNet] Listening on ${this.config.artnet.bindAddress}:${this.config.artnet.port}`,
+    );
 
     // 6. Start all schedulers
     for (const scheduler of this.realtimeSchedulers.values()) scheduler.start();
@@ -123,11 +147,24 @@ export class BridgeOrchestrator {
       for (const scheduler of categoryMap.values()) scheduler.start();
     }
 
+    // 7. Start stats interval
+    if (this.statsIntervalSec > 0) {
+      this.statsIntervalTimer = setInterval(() => {
+        this.logStats();
+      }, this.statsIntervalSec * 1000);
+    }
+
     this.running = true;
   }
 
   async stop(): Promise<void> {
     this.running = false;
+
+    // Stop stats timer
+    if (this.statsIntervalTimer) {
+      clearInterval(this.statsIntervalTimer);
+      this.statsIntervalTimer = undefined;
+    }
 
     // Stop schedulers
     for (const scheduler of this.realtimeSchedulers.values()) scheduler.stop();
@@ -140,15 +177,16 @@ export class BridgeOrchestrator {
     try {
       await this.artnet.stop();
     } catch (e) {
-      console.error("ArtNet stop error:", e);
+      console.error("[ArtNet] Stop error:", e);
     }
 
     // Disconnect adapters
     for (const adapter of this.adapters) {
       try {
         await adapter.disconnect();
+        console.log(`[Bridge] Adapter ${adapter.name} disconnected`);
       } catch (e) {
-        console.error(`Adapter ${adapter.id} disconnect error:`, e);
+        console.error(`[Bridge] Adapter ${adapter.id} disconnect error:`, e);
       }
     }
 
@@ -162,6 +200,7 @@ export class BridgeOrchestrator {
     this.limitedSchedulers.clear();
     this.entityValues.clear();
     this.universeBuffers.clear();
+    this.seenUniverses.clear();
   }
 
   getAdapters(): ProtocolAdapter[] {
@@ -227,7 +266,15 @@ export class BridgeOrchestrator {
   private handleDmx(universe: number, data: Uint8Array): void {
     this.frameCount++;
     this.frameCounts[universe] = (this.frameCounts[universe] ?? 0) + 1;
+    this.statsFrameCount++;
+    this.statsFrameCounts[universe] = (this.statsFrameCounts[universe] ?? 0) + 1;
     this.lastFrameTime = Date.now();
+
+    // Log first time we see a universe
+    if (!this.seenUniverses.has(universe)) {
+      this.seenUniverses.add(universe);
+      console.log(`[ArtNet] First data on universe ${universe}`);
+    }
 
     // Accumulate partial frames into a full 512-byte universe buffer
     let buffer = this.universeBuffers.get(universe);
@@ -319,9 +366,11 @@ export class BridgeOrchestrator {
         const capturedBridgeId = protocolBridge.id;
         this.realtimeSchedulers.set(
           protocolBridge.id,
-          new RealtimeScheduler(rate, (updates: EntityUpdate[]) =>
-            capturedAdapter.handleRealtimeUpdate(capturedBridgeId, updates),
-          ),
+          new RealtimeScheduler(rate, async (updates: EntityUpdate[]) => {
+            this.statsRealtimeChanges[capturedBridgeId] =
+              (this.statsRealtimeChanges[capturedBridgeId] ?? 0) + updates.length;
+            await capturedAdapter.handleRealtimeUpdate(capturedBridgeId, updates);
+          }),
         );
       }
 
@@ -345,13 +394,88 @@ export class BridgeOrchestrator {
         const capturedBridgeId = protocolBridge.id;
         categoryMap.set(
           category,
-          new LimitedScheduler(rate, (entityId: string, value: EntityValue) =>
-            capturedAdapter.handleLimitedUpdate(capturedBridgeId, entityId, value),
-          ),
+          new LimitedScheduler(rate, async (entityId: string, value: EntityValue) => {
+            if (!this.statsLimitedDispatches[capturedBridgeId]) {
+              this.statsLimitedDispatches[capturedBridgeId] = {};
+            }
+            this.statsLimitedDispatches[capturedBridgeId][category] =
+              (this.statsLimitedDispatches[capturedBridgeId][category] ?? 0) + 1;
+            await capturedAdapter.handleLimitedUpdate(capturedBridgeId, entityId, value);
+          }),
         );
       }
       this.limitedSchedulers.set(protocolBridge.id, categoryMap);
+
+      // Log scheduler creation
+      const limitedCategories = [...categories];
+      if (realtimeEntities.length > 0 || limitedCategories.length > 0) {
+        const bridgeConfig = this.config.bridges.find((b) => b.id === protocolBridge.id);
+        const realtimeRateLimit = protocolBridge.rateLimits["realtime-light"] ??
+          protocolBridge.rateLimits["realtime"] ?? {
+            defaultPerSecond: 6,
+            maxPerSecond: 6,
+          };
+        const userRealtimeRate =
+          bridgeConfig?.rateLimits?.["realtime-light"] ?? bridgeConfig?.rateLimits?.["realtime"];
+        const realtimeRate = Math.min(
+          userRealtimeRate ?? realtimeRateLimit.defaultPerSecond,
+          realtimeRateLimit.maxPerSecond,
+        );
+        const parts: string[] = [];
+        if (realtimeEntities.length > 0) parts.push(`realtime at ${realtimeRate}Hz`);
+        if (limitedCategories.length > 0) parts.push(`limited: ${limitedCategories.join(", ")}`);
+        console.log(`[Bridge] Scheduler created: ${protocolBridge.id} ${parts.join(", ")}`);
+      }
     }
+  }
+
+  private logStats(): void {
+    const parts: string[] = [];
+
+    // ArtNet stats
+    const universeList = Object.keys(this.statsFrameCounts)
+      .map(Number)
+      .sort((a, b) => a - b);
+    const fps = Math.round(this.statsFrameCount / this.statsIntervalSec);
+    parts.push(
+      `ArtNet: ${this.statsFrameCount} frames (${fps}/s)${universeList.length > 0 ? ` on universes ${universeList.join(", ")}` : ""}`,
+    );
+
+    // Per-bridge stats
+    for (const protocolBridge of this.protocolBridges) {
+      const bridgeId = protocolBridge.id;
+      const bridgeParts: string[] = [];
+
+      const realtimeCount = this.statsRealtimeChanges[bridgeId] ?? 0;
+      if (realtimeCount > 0) {
+        bridgeParts.push(`${realtimeCount} realtime changes`);
+      }
+
+      const limitedCats = this.statsLimitedDispatches[bridgeId];
+      if (limitedCats) {
+        const totalLimited = Object.values(limitedCats).reduce((a, b) => a + b, 0);
+        if (totalLimited > 0) {
+          const catDetails = Object.entries(limitedCats)
+            .map(([cat, count]) => `${count} ${cat}`)
+            .join(", ");
+          bridgeParts.push(`${totalLimited} limited dispatches (${catDetails})`);
+        }
+      }
+
+      if (bridgeParts.length > 0) {
+        const adapter = this.adapterByBridgeId.get(bridgeId);
+        const label = adapter ? `${adapter.type} ${bridgeId}` : bridgeId;
+        parts.push(`${label}: ${bridgeParts.join(", ")}`);
+      }
+    }
+
+    console.log(`[Stats] ${parts.join(" | ")}`);
+
+    // Reset counters
+    this.statsFrameCount = 0;
+    this.statsFrameCounts = {};
+    this.statsRealtimeChanges = {};
+    this.statsLimitedDispatches = {};
   }
 
   private findEntity(bridgeId: string, entityId: string): Entity | undefined {

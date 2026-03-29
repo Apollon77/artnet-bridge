@@ -305,16 +305,23 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         };
 
         // Fetch all resources
-        const [lights, rooms, zones, groupedLights, scenes, entertainmentConfigs, entertainmentServices] =
-          await Promise.all([
-            client.getLights(),
-            client.getRooms(),
-            client.getZones(),
-            client.getGroupedLights(),
-            client.getScenes(),
-            client.getEntertainmentConfigurations(),
-            client.getEntertainmentServices().catch(() => []),
-          ]);
+        const [
+          lights,
+          rooms,
+          zones,
+          groupedLights,
+          scenes,
+          entertainmentConfigs,
+          entertainmentServices,
+        ] = await Promise.all([
+          client.getLights(),
+          client.getRooms(),
+          client.getZones(),
+          client.getGroupedLights(),
+          client.getScenes(),
+          client.getEntertainmentConfigurations(),
+          client.getEntertainmentServices().catch(() => []),
+        ]);
 
         // Build entertainment service ID → light lookup
         // Entertainment channel members reference entertainment services, not lights.
