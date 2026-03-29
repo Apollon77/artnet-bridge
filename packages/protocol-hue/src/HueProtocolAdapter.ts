@@ -107,8 +107,6 @@ interface BridgeState {
   lastUpdate: number;
   /** When a 429 was received, holds the timestamp until which to back off */
   rateLimitBackoffUntil: number;
-  /** Debug counter for realtime update logging */
-  realtimeLogCount: number;
   /** Prevents multiple concurrent streaming retry attempts */
   streamingRetryPending: boolean;
   /** Timer for periodic network-error retry */
@@ -304,7 +302,6 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           streaming: false,
           lastUpdate: 0,
           rateLimitBackoffUntil: 0,
-          realtimeLogCount: 0,
           streamingRetryPending: false,
           networkRetryTimer: null,
           entertainmentRetryTimer: null,
@@ -516,7 +513,6 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     for (const update of updates) {
       const channelId = state.entityToChannel.get(update.entityId);
       if (channelId === undefined) {
-        console.log(`[Hue] handleRealtimeUpdate: no channel mapping for entity ${update.entityId}, entityToChannel has ${state.entityToChannel.size} entries`);
         continue;
       }
       if (update.value.type === "rgb") {
@@ -546,15 +542,6 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     }
 
     if (colorUpdates.length > 0) {
-      // Debug: log first update and then every 100th
-      if (!state.realtimeLogCount) state.realtimeLogCount = 0;
-      state.realtimeLogCount++;
-      if (state.realtimeLogCount === 1 || state.realtimeLogCount % 100 === 0) {
-        const first = colorUpdates[0];
-        console.log(
-          `[Hue] Realtime update #${state.realtimeLogCount}: ${colorUpdates.length} channels, first: ch=${first.channelId} rgb=[${first.color.join(",")}], dtls.connected=${state.dtlsStream.connected}`,
-        );
-      }
       state.dtlsStream.updateValues(colorUpdates);
       state.lastUpdate = Date.now();
     }

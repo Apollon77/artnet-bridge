@@ -308,5 +308,28 @@ export class HueClipClient {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw new Error(`Hue API error: ${String(res.statusCode)} ${res.body}`);
     }
+
+    // CLIP v2 can return 200 with errors in the body
+    if (res.body) {
+      try {
+        const parsed: unknown = JSON.parse(res.body);
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          "errors" in parsed &&
+          Array.isArray(parsed.errors) &&
+          parsed.errors.length > 0
+        ) {
+          const errDescriptions = parsed.errors
+            .map((e: unknown) =>
+              typeof e === "object" && e !== null && "description" in e ? String(e.description) : "unknown error",
+            )
+            .join("; ");
+          console.warn(`[Hue] API warning for PUT ${resource}: ${errDescriptions}`);
+        }
+      } catch {
+        // Response body wasn't JSON — ignore
+      }
+    }
   }
 }

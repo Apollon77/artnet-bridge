@@ -1116,6 +1116,25 @@ function renderMappingEditor(bridgeId) {
         }
       }
     }
+    // Warn about group/light overlap: if a group and individual lights are both mapped,
+    // the group commands may override individual light state
+    var mappedGroups = mappingState.filter(function (ms) {
+      return ms.dmxStart != null && (ms.entityType === "room" || ms.entityType === "zone");
+    });
+    var mappedLights = mappingState.filter(function (ms) {
+      return ms.dmxStart != null && ms.entityType === "light";
+    });
+    if (mappedGroups.length > 0 && mappedLights.length > 0) {
+      for (var g = 0; g < mappedGroups.length; g++) {
+        errors.push({
+          index: mappingState.indexOf(mappedGroups[g]),
+          isWarning: true,
+          msg: "\u26a0 Group \"" + mappedGroups[g].entityName + "\" is mapped alongside individual lights. " +
+            "Group commands (on/off, brightness) will affect all lights in the group and may override individual light settings."
+        });
+      }
+    }
+
     return errors;
   }
 
@@ -1272,10 +1291,11 @@ function renderMappingEditor(bridgeId) {
     table.appendChild(tbody);
     tableContainer.appendChild(table);
 
-    // Show errors
+    // Show errors and warnings
     if (errors.length > 0) {
       for (var e = 0; e < errors.length; e++) {
-        var errDiv = el("div", "mapping-error", "\u26A0 " + errors[e].msg);
+        var cls = errors[e].isWarning ? "mapping-warning" : "mapping-error";
+        var errDiv = el("div", cls, errors[e].msg);
         errorContainer.appendChild(errDiv);
       }
     }

@@ -465,5 +465,6 @@ td:last-child {
 }
 .mapping-table input.error, .mapping-table select.error { border-color: var(--danger); }
 .mapping-error { color: var(--danger); font-size: 0.8rem; margin: 4px 0; }
+.mapping-warning { color: #f0a030; font-size: 0.8rem; margin: 4px 0; }
 .mapping-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .mapping-success { color: var(--accent-2); font-size: 0.85rem; margin-left: 8px; }
