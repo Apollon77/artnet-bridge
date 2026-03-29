@@ -983,7 +983,7 @@ function renderMappingEditor(bridgeId) {
     for (var i = 0; i < mappingState.length; i++) {
       if (mappingSelected.get(mappingState[i].entityId) && mappingState[i].dmxStart == null) {
         mappingState[i].dmxStart = next;
-        mappingState[i].mode = mappingDefaultMode(mappingState[i].layoutType);
+        // Keep the user's currently selected mode (don't reset to default)
         next += mappingChannelWidth(mappingState[i].mode);
       }
     }
