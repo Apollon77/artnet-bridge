@@ -192,6 +192,9 @@ See [CLI documentation](docs/cli.md) for full details.
 - [CLI Reference](docs/cli.md) -- all commands and flags
 - [Web UI Guide](docs/web-ui.md) -- using the browser dashboard
 
+**Lighting software:**
+- [QLC+ Fixture Definitions](fixtures/README.md) -- pre-built fixtures for QLC+
+
 **Developer guides:**
 - [Developing Protocol Adapters](docs/developing-protocols.md) -- how to add support for new protocols
 - [packages/artnet](packages/artnet/README.md) -- ArtNet protocol implementation
@@ -241,6 +244,18 @@ npm run format-verify  # Check formatting (CI)
 ```
 
 ESM-only monorepo using npm workspaces. TypeScript with project references, esbuild for transpilation.
+
+## QLC+ Fixture Definitions
+
+Pre-built fixture definitions for [QLC+](https://www.qlcplus.org/) are included in the [`fixtures/`](fixtures/) directory, covering all channel modes (8bit RGB, 8bit+Dimmer, 16bit RGB, Brightness, Scene Selector). See the [fixtures README](fixtures/README.md) for installation instructions.
+
+## Inspired By
+
+This project was inspired by and builds upon ideas from these projects:
+
+- **[artnet-hue-entertainment](https://github.com/jundl77/artnet-hue-entertainment)** -- ArtNet to Hue Entertainment API bridge with DTLS streaming support and web UI. The entertainment streaming approach, DTLS packet format, and web-based configuration pattern were key references.
+- **[dmx-hue](https://github.com/sinedied/dmx-hue)** -- ArtNet to Hue bridge using the standard REST API with rate limiting. The DMX channel mapping model and rate-limited update approach were valuable references.
+- **[node-hue-api](https://github.com/peter-murray/node-hue-api)** -- Comprehensive Node.js client for the Philips Hue API. Used as API surface reference for understanding the Hue CLIP v2 resource model (lights, groups, scenes, entertainment configurations).
 
 ## License
 
