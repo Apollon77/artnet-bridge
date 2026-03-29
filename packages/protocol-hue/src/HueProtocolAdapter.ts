@@ -107,6 +107,8 @@ interface BridgeState {
   lastUpdate: number;
   /** When a 429 was received, holds the timestamp until which to back off */
   rateLimitBackoffUntil: number;
+  /** Debug counter for realtime update logging */
+  realtimeLogCount: number;
   /** Timer for periodic network-error retry */
   networkRetryTimer: ReturnType<typeof setInterval> | null;
   /** Timer for periodic entertainment claim retry */
@@ -300,6 +302,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           streaming: false,
           lastUpdate: 0,
           rateLimitBackoffUntil: 0,
+          realtimeLogCount: 0,
           networkRetryTimer: null,
           entertainmentRetryTimer: null,
         };
@@ -485,6 +488,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
   async handleRealtimeUpdate(bridgeId: string, updates: EntityUpdate[]): Promise<void> {
     const state = this.bridges.get(bridgeId);
     if (!state?.dtlsStream) {
+      console.log(`[Hue] handleRealtimeUpdate: no DTLS stream for ${bridgeId}, connected=${state?.connected}, streaming=${state?.streaming}`);
       return;
     }
 
@@ -492,6 +496,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     for (const update of updates) {
       const channelId = state.entityToChannel.get(update.entityId);
       if (channelId === undefined) {
+        console.log(`[Hue] handleRealtimeUpdate: no channel mapping for entity ${update.entityId}, entityToChannel has ${state.entityToChannel.size} entries`);
         continue;
       }
       if (update.value.type === "rgb") {
@@ -521,6 +526,15 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     }
 
     if (colorUpdates.length > 0) {
+      // Debug: log first update and then every 100th
+      if (!state.realtimeLogCount) state.realtimeLogCount = 0;
+      state.realtimeLogCount++;
+      if (state.realtimeLogCount === 1 || state.realtimeLogCount % 100 === 0) {
+        const first = colorUpdates[0];
+        console.log(
+          `[Hue] Realtime update #${state.realtimeLogCount}: ${colorUpdates.length} channels, first: ch=${first.channelId} rgb=[${first.color.join(",")}], dtls.connected=${state.dtlsStream.connected}`,
+        );
+      }
       state.dtlsStream.updateValues(colorUpdates);
       state.lastUpdate = Date.now();
     }
@@ -563,6 +577,11 @@ export class HueProtocolAdapter implements ProtocolAdapter {
               color: { xy: { x, y } },
               dimming: { brightness },
             });
+          } else if (value.type === "brightness") {
+            const brightness = (value.value / 65535) * 100;
+            await state.client.setLightState(entityId, {
+              dimming: { brightness },
+            });
           }
           break;
         }
@@ -577,6 +596,13 @@ export class HueProtocolAdapter implements ProtocolAdapter {
             await state.client.setGroupedLightState(entityId, {
               color: { xy: { x, y } },
               dimming: { brightness: bri },
+            });
+          } else if (value.type === "rgb-dimmable") {
+            const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
+            const brightness = (value.dim / 65535) * 100;
+            await state.client.setGroupedLightState(entityId, {
+              color: { xy: { x, y } },
+              dimming: { brightness },
             });
           }
           break;
