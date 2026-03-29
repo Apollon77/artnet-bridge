@@ -1220,8 +1220,11 @@ function renderMappingEditor(bridgeId) {
 
     var errors = validate();
     var errorIndices = new Set();
+    var warningIndices = new Set();
     for (var e = 0; e < errors.length; e++) {
-      if (!errors[e].isWarning) {
+      if (errors[e].isWarning) {
+        warningIndices.add(errors[e].index);
+      } else {
         errorIndices.add(errors[e].index);
         if (errors[e].indices) {
           for (var k = 0; k < errors[e].indices.length; k++) {
@@ -1280,6 +1283,7 @@ function renderMappingEditor(bridgeId) {
         else startInput.value = "";
         startInput.placeholder = "--";
         if (errorIndices.has(idx)) startInput.className = "error";
+        else if (warningIndices.has(idx)) startInput.className = "warning";
         startInput.addEventListener("change", function () {
           var val = parseInt(this.value, 10);
           mappingState[idx].dmxStart = isNaN(val) ? null : val;

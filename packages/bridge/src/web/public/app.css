@@ -464,6 +464,7 @@ td:last-child {
     border-radius: 4px; color: var(--text); font-size: 0.85rem;
 }
 .mapping-table input.error, .mapping-table select.error { border-color: var(--danger); }
+.mapping-table input.warning, .mapping-table select.warning { border-color: #f0a030; }
 .mapping-error { color: var(--danger); font-size: 0.8rem; margin: 4px 0; }
 .mapping-warning { color: #f0a030; font-size: 0.8rem; margin: 4px 0; }
 .mapping-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
