@@ -1144,15 +1144,33 @@ function renderMappingEditor(bridgeId) {
     var mappedLights = mappingState.filter(function (ms) {
       return ms.dmxStart != null && ms.entityType === "light";
     });
-    if (mappedGroups.length > 0 && mappedLights.length > 0) {
+    if (mappedLights.length > 0) {
       var lightNames = mappedLights.map(function (ms) { return "\"" + ms.entityName + "\""; });
-      for (var g = 0; g < mappedGroups.length; g++) {
+
+      // Warn for mapped groups alongside individual lights
+      if (mappedGroups.length > 0) {
+        for (var g = 0; g < mappedGroups.length; g++) {
+          errors.push({
+            index: mappingState.indexOf(mappedGroups[g]),
+            isWarning: true,
+            msg: "\u26a0 Group \"" + mappedGroups[g].entityName + "\" is mapped alongside " +
+              lightNames.join(", ") + ". " +
+              "Group commands (on/off, brightness) will affect all lights in the group and may override individual light settings."
+          });
+        }
+      }
+
+      // Warn for mapped scene-selectors alongside individual lights
+      var mappedScenes = mappingState.filter(function (ms) {
+        return ms.dmxStart != null && ms.entityType === "scene-selector";
+      });
+      for (var s = 0; s < mappedScenes.length; s++) {
         errors.push({
-          index: mappingState.indexOf(mappedGroups[g]),
+          index: mappingState.indexOf(mappedScenes[s]),
           isWarning: true,
-          msg: "\u26a0 Group \"" + mappedGroups[g].entityName + "\" is mapped alongside " +
+          msg: "\u26a0 Scene selector \"" + mappedScenes[s].entityName + "\" is mapped alongside " +
             lightNames.join(", ") + ". " +
-            "Group commands (on/off, brightness) will affect all lights in the group and may override individual light settings."
+            "Activating a scene will override the color/brightness of all lights in the scene's group, including individually controlled ones."
         });
       }
     }
