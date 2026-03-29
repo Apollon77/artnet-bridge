@@ -141,9 +141,6 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
   /** Send an OpPollReply to the given address on the Art-Net port. */
   private sendPollReply(address: string, port: number): void {
     const ipParts = getLocalIpAddress();
-    console.log(
-      `[ArtNet] Sending PollReply to ${address}:${port} (our IP: ${ipParts.join(".")}, ${this.outputUniverses.length} ports)`,
-    );
     const numPorts = Math.min(this.outputUniverses.length, 4);
 
     // Port types: each port is output (bit 7 = output capable)

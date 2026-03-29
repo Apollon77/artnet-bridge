@@ -132,8 +132,12 @@ export class BridgeOrchestrator {
     this.artnet.setOutputUniverses(universes);
 
     this.artnet.on("error", (err) => console.error("[ArtNet] Error:", err));
+    const seenPollSources = new Set<string>();
     this.artnet.on("poll", (info: { address: string }) => {
-      console.log(`[ArtNet] Poll received from ${info.address}`);
+      if (!seenPollSources.has(info.address)) {
+        seenPollSources.add(info.address);
+        console.log(`[ArtNet] Poll received from ${info.address} (first from this source)`);
+      }
     });
     this.artnet.on("dmx", this.dmxHandler);
     await this.artnet.start();
