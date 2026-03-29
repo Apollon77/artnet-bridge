@@ -565,45 +565,79 @@ export class HueProtocolAdapter implements ProtocolAdapter {
       switch (entity.category) {
         case "light": {
           if (value.type === "rgb") {
-            const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
-            await state.client.setLightState(entityId, {
-              color: { xy: { x, y } },
-              dimming: { brightness: bri },
-            });
+            const isOff = value.r === 0 && value.g === 0 && value.b === 0;
+            if (isOff) {
+              await state.client.setLightState(entityId, { on: { on: false } });
+            } else {
+              const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
+              await state.client.setLightState(entityId, {
+                on: { on: true },
+                color: { xy: { x, y } },
+                dimming: { brightness: Math.max(bri, 1) },
+              });
+            }
           } else if (value.type === "rgb-dimmable") {
-            const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
-            const brightness = (value.dim / 65535) * 100;
-            await state.client.setLightState(entityId, {
-              color: { xy: { x, y } },
-              dimming: { brightness },
-            });
+            const isOff = value.dim === 0 || (value.r === 0 && value.g === 0 && value.b === 0);
+            if (isOff) {
+              await state.client.setLightState(entityId, { on: { on: false } });
+            } else {
+              const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
+              const brightness = (value.dim / 65535) * 100;
+              await state.client.setLightState(entityId, {
+                on: { on: true },
+                color: { xy: { x, y } },
+                dimming: { brightness: Math.max(brightness, 1) },
+              });
+            }
           } else if (value.type === "brightness") {
-            const brightness = (value.value / 65535) * 100;
-            await state.client.setLightState(entityId, {
-              dimming: { brightness },
-            });
+            if (value.value === 0) {
+              await state.client.setLightState(entityId, { on: { on: false } });
+            } else {
+              const brightness = (value.value / 65535) * 100;
+              await state.client.setLightState(entityId, {
+                on: { on: true },
+                dimming: { brightness: Math.max(brightness, 1) },
+              });
+            }
           }
           break;
         }
         case "group": {
           if (value.type === "brightness") {
-            const brightness = (value.value / 65535) * 100;
-            await state.client.setGroupedLightState(entityId, {
-              dimming: { brightness },
-            });
+            if (value.value === 0) {
+              await state.client.setGroupedLightState(entityId, { on: { on: false } });
+            } else {
+              const brightness = (value.value / 65535) * 100;
+              await state.client.setGroupedLightState(entityId, {
+                on: { on: true },
+                dimming: { brightness: Math.max(brightness, 1) },
+              });
+            }
           } else if (value.type === "rgb") {
-            const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
-            await state.client.setGroupedLightState(entityId, {
-              color: { xy: { x, y } },
-              dimming: { brightness: bri },
-            });
+            const isOff = value.r === 0 && value.g === 0 && value.b === 0;
+            if (isOff) {
+              await state.client.setGroupedLightState(entityId, { on: { on: false } });
+            } else {
+              const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
+              await state.client.setGroupedLightState(entityId, {
+                on: { on: true },
+                color: { xy: { x, y } },
+                dimming: { brightness: Math.max(bri, 1) },
+              });
+            }
           } else if (value.type === "rgb-dimmable") {
-            const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
-            const brightness = (value.dim / 65535) * 100;
-            await state.client.setGroupedLightState(entityId, {
-              color: { xy: { x, y } },
-              dimming: { brightness },
-            });
+            const isOff = value.dim === 0 || (value.r === 0 && value.g === 0 && value.b === 0);
+            if (isOff) {
+              await state.client.setGroupedLightState(entityId, { on: { on: false } });
+            } else {
+              const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
+              const brightness = (value.dim / 65535) * 100;
+              await state.client.setGroupedLightState(entityId, {
+                on: { on: true },
+                color: { xy: { x, y } },
+                dimming: { brightness: Math.max(brightness, 1) },
+              });
+            }
           }
           break;
         }
