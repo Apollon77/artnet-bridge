@@ -244,11 +244,22 @@ export class BridgeOrchestrator {
       ).length;
 
       const rateLimitUsage: Record<string, { current: number; max: number }> = {};
+      const elapsed = this.statsIntervalSec > 0 ? this.statsIntervalSec : 10;
       for (const [category, budget] of Object.entries(protocolBridge.rateLimits)) {
         const bridgeConfig = this.config.bridges.find((b) => b.id === protocolBridge.id);
         const userRate = bridgeConfig?.rateLimits?.[category];
-        const effectiveRate = Math.min(userRate ?? budget.defaultPerSecond, budget.maxPerSecond);
-        rateLimitUsage[category] = { current: effectiveRate, max: budget.maxPerSecond };
+        const configuredRate = Math.min(userRate ?? budget.defaultPerSecond, budget.maxPerSecond);
+
+        // Actual dispatches per second from the current stats window
+        let actualPerSec = 0;
+        if (category === "realtime-light" || category === "realtime") {
+          actualPerSec = Math.round(((this.statsRealtimeChanges[protocolBridge.id] ?? 0) / elapsed) * 10) / 10;
+        } else {
+          const catDispatches = this.statsLimitedDispatches[protocolBridge.id]?.[category] ?? 0;
+          actualPerSec = Math.round((catDispatches / elapsed) * 10) / 10;
+        }
+
+        rateLimitUsage[category] = { current: actualPerSec, max: configuredRate };
       }
 
       const entityStatuses: Record<string, EntityRuntimeStatus> = {};
