@@ -28,7 +28,11 @@ body {
     "Apple Color Emoji", "Segoe UI Emoji";
   background: radial-gradient(1200px 500px at 20% -10%, rgba(124,92,255,0.25), transparent 60%),
     radial-gradient(900px 400px at 110% 10%, rgba(45,212,191,0.15), transparent 55%), var(--bg);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-color: var(--bg);
   color: var(--text);
+  min-height: 100%;
 }
 .app { max-width: 900px; margin: 0 auto; padding: 24px; }
 h1 { font-size: 1.5rem; margin-bottom: 4px; }
@@ -196,6 +200,7 @@ h1 span { color: var(--accent); }
       fetchJson("/rooms/" + encodeURIComponent(bridgeId)),
       fetchJson("/zones/" + encodeURIComponent(bridgeId)),
       fetchJson("/scenes/" + encodeURIComponent(bridgeId)),
+      fetchJson("/entertainment-services/" + encodeURIComponent(bridgeId)).catch(function() { return []; }),
       fetch("/api/config").then(function(r) { return r.ok ? r.json() : null; }),
     ]).then(function(results) {
       var entertainmentAreas = results[0];
@@ -203,7 +208,20 @@ h1 span { color: var(--accent); }
       var rooms = results[2];
       var zones = results[3];
       var scenes = results[4];
-      var config = results[5];
+      var entServices = results[5];
+      var config = results[6];
+
+      // Build entertainment service ID → device owner ID map
+      // Entertainment channel members reference entertainment services, not lights.
+      // Entertainment service → owner device → light (same owner device)
+      var entertainmentServiceMap = new Map();
+      if (Array.isArray(entServices)) {
+        entServices.forEach(function(svc) {
+          if (svc.owner && svc.owner.rid) {
+            entertainmentServiceMap.set(svc.id, svc.owner.rid);
+          }
+        });
+      }
 
       // Entertainment Areas
       section.appendChild(el("div", "section-label", "Entertainment Areas"));
@@ -252,6 +270,8 @@ h1 span { color: var(--accent); }
           li.appendChild(el("span", "ea-status", ea.status || ""));
 
           // Show lights in this entertainment area
+          // Entertainment channel members reference entertainment services, not lights directly.
+          // We try: 1) direct ID match on lights, 2) match via device owner (light.owner.rid === entertainment owner.rid)
           if (ea.channels && ea.channels.length > 0) {
             var lightsDiv = el("div", "ea-lights");
             lightsDiv.appendChild(document.createTextNode("Lights: "));
@@ -260,11 +280,20 @@ h1 span { color: var(--accent); }
               ch.members.forEach(function(m) {
                 if (!first) lightsDiv.appendChild(document.createTextNode(", "));
                 first = false;
-                var found = lights.find(function(l) { return l.id === m.service.rid; });
-                var name = found ? found.metadata.name : "Unknown";
+                var rid = m.service.rid;
+                // Try direct light match first
+                var found = lights.find(function(l) { return l.id === rid; });
+                // If not found, try to look up via entertainmentServiceMap (built below)
+                if (!found && entertainmentServiceMap) {
+                  var deviceId = entertainmentServiceMap.get(rid);
+                  if (deviceId) {
+                    found = lights.find(function(l) { return l.owner && l.owner.rid === deviceId; });
+                  }
+                }
+                var name = found ? found.metadata.name : rid;
                 var nameSpan = el("span", null, name);
                 lightsDiv.appendChild(nameSpan);
-                lightsDiv.appendChild(el("span", "item-uuid", " (" + m.service.rid + ")"));
+                lightsDiv.appendChild(el("span", "item-uuid", " (" + rid + ")"));
               });
             });
             li.appendChild(lightsDiv);

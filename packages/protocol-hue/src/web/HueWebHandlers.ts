@@ -95,5 +95,21 @@ export function createHueWebHandlers(
     }
   });
 
+  // GET /entertainment-services/:bridgeId — list entertainment services (maps to devices)
+  router.get("/entertainment-services/:bridgeId", async (req, res) => {
+    try {
+      const client = getClient(req.params.bridgeId);
+      if (!client) {
+        res.status(404).json({ error: "Bridge not found" });
+        return;
+      }
+      const services = await client.getEntertainmentServices();
+      res.json(services);
+    } catch (e) {
+      console.error("Failed to fetch entertainment services:", e);
+      res.status(500).json({ error: "Failed to fetch entertainment services" });
+    }
+  });
+
   return router;
 }

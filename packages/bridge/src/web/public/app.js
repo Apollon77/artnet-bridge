@@ -947,6 +947,8 @@ function renderMappingEditor(bridgeId) {
     mappingState.push({
       entityId: ent.id,
       entityName: ent.metadata?.name || ent.id,
+      entityType: ent.metadata?.type || "unknown",
+      controlMode: ent.controlMode || "limited",
       layoutType: layoutType,
       compatibleModes: modes,
       dmxStart: dmxStart,
@@ -1128,7 +1130,7 @@ function renderMappingEditor(bridgeId) {
     thCheck.appendChild(selectAllCb);
     headRow.appendChild(thCheck);
 
-    var headers = ["Entity Name", "DMX Start", "Mode", "DMX End"];
+    var headers = ["Entity Name", "Type", "Control", "DMX Start", "Channel Mode", "DMX End", ""];
     for (var h = 0; h < headers.length; h++) {
       var th = document.createElement("th");
       th.textContent = headers[h];
@@ -1170,6 +1172,17 @@ function renderMappingEditor(bridgeId) {
         var tdName = document.createElement("td");
         tdName.textContent = ms.entityName;
         tr.appendChild(tdName);
+
+        // Type badge
+        var tdType = document.createElement("td");
+        tdType.appendChild(badge(ms.entityType, "type"));
+        tr.appendChild(tdType);
+
+        // Control mode badge
+        var tdCtrl = document.createElement("td");
+        var ctrlClass = ms.controlMode === "realtime" ? "realtime" : "limited";
+        tdCtrl.appendChild(badge(ms.controlMode, ctrlClass));
+        tr.appendChild(tdCtrl);
 
         // DMX Start input
         var tdStart = document.createElement("td");
@@ -1216,6 +1229,27 @@ function renderMappingEditor(bridgeId) {
           tdEnd.className = "muted";
         }
         tr.appendChild(tdEnd);
+
+        // Clear button (per row)
+        var tdClear = document.createElement("td");
+        if (ms.dmxStart != null) {
+          var clearBtn = document.createElement("button");
+          clearBtn.className = "small danger";
+          clearBtn.textContent = "\u00d7"; // × symbol
+          clearBtn.title = "Remove DMX mapping";
+          clearBtn.style.padding = "2px 8px";
+          clearBtn.style.cursor = "pointer";
+          clearBtn.style.background = "transparent";
+          clearBtn.style.border = "1px solid var(--danger)";
+          clearBtn.style.color = "var(--danger)";
+          clearBtn.style.borderRadius = "4px";
+          clearBtn.addEventListener("click", function () {
+            mappingState[idx].dmxStart = null;
+            rebuildTable();
+          });
+          tdClear.appendChild(clearBtn);
+        }
+        tr.appendChild(tdClear);
 
         tbody.appendChild(tr);
       })(i);

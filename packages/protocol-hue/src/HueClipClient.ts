@@ -45,6 +45,13 @@ export interface HueScene {
   type: string;
 }
 
+export interface HueEntertainmentService {
+  id: string;
+  type: string;
+  /** Owner device */
+  owner: { rid: string; rtype: string };
+}
+
 export interface HueEntertainmentConfiguration {
   id: string;
   metadata: { name: string };
@@ -166,6 +173,10 @@ export class HueClipClient {
 
   async getScenes(): Promise<HueScene[]> {
     return this.clipGet<HueScene>("scene");
+  }
+
+  async getEntertainmentServices(): Promise<HueEntertainmentService[]> {
+    return this.clipGet<HueEntertainmentService>("entertainment");
   }
 
   async getEntertainmentConfigurations(): Promise<HueEntertainmentConfiguration[]> {
