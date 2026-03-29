@@ -926,7 +926,7 @@ function renderMappingEditor(bridgeId) {
   if (bridgeCfg && bridgeCfg.channelMappings) {
     for (var i = 0; i < bridgeCfg.channelMappings.length; i++) {
       var m = bridgeCfg.channelMappings[i];
-      existingMappings[m.entityId] = m;
+      existingMappings[m.targetId || m.entityId] = m;
     }
   }
 
@@ -1047,10 +1047,10 @@ function renderMappingEditor(bridgeId) {
         var ms = mappingState[i];
         if (ms.dmxStart != null && ms.dmxStart > 0) {
           newMappings.push({
-            entityId: ms.entityId,
+            targetId: ms.entityId,
+            targetType: ms.entityType,
             dmxStart: ms.dmxStart,
             channelMode: ms.mode,
-            channelWidth: mappingChannelWidth(ms.mode)
           });
         }
       }
