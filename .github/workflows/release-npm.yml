@@ -88,7 +88,7 @@ jobs:
 
       - name: Use Node.js 22.x
         if: steps.automerge.outputs.mergeResult == 'merged'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22.x
 
