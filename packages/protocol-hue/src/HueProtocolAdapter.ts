@@ -219,9 +219,10 @@ interface RouterLike {
  * initial object check.
  */
 function isRouterLike(obj: unknown): obj is RouterLike {
+  // Express Router is a function (middleware) with extra methods attached
+  if (obj === null || obj === undefined) return false;
+  if (typeof obj !== "object" && typeof obj !== "function") return false;
   return (
-    typeof obj === "object" &&
-    obj !== null &&
     "use" in obj &&
     typeof obj.use === "function" &&
     "get" in obj &&
