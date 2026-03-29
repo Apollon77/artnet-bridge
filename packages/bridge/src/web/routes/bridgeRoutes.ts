@@ -120,7 +120,11 @@ export function createBridgeRoutes(
       return;
     }
 
-    const [r, g, b] = body.color;
+    // UI sends 8-bit RGB (0-255), adapter expects 16-bit (0-65535)
+    const [r8, g8, b8] = body.color;
+    const r = r8 * 257;
+    const g = g8 * 257;
+    const b = b8 * 257;
 
     // Optional: only test specific entities
     const entityIds = hasStringArray(body, "entityIds") ? body.entityIds : null;
