@@ -81,10 +81,13 @@ h1 span { color: var(--accent); }
 .ea-status { color: var(--muted); font-size: 0.8rem; margin-left: auto; }
 .ea-channels { color: var(--muted); font-size: 0.8rem; }
 .ea-lights { font-size: 0.8rem; color: var(--muted); margin-top: 4px; padding-left: 28px; width: 100%; }
+.ea-lights-list { list-style: none; padding: 0; margin: 4px 0 0; }
+.ea-lights-list li { padding: 2px 0; }
+.ea-lights-list li::before { content: "\2013\00a0"; color: var(--muted); }
 
 .light-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 8px;
   margin-top: 8px;
 }
@@ -106,7 +109,9 @@ h1 span { color: var(--accent); }
   font-size: 0.85rem;
 }
 
-.item-uuid { display: block; font-size: 0.7rem; color: var(--muted); font-family: var(--mono); margin-top: 2px; opacity: 0.7; }
+.item-uuid { display: block; font-size: 0.6rem; color: var(--muted); font-family: var(--mono); margin-top: 1px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.light-chip .item-uuid { display: inline; margin-top: 0; margin-left: 4px; }
+.ea-lights-list .item-uuid { display: inline; }
 
 .btn {
   display: inline-block;
@@ -274,16 +279,14 @@ h1 span { color: var(--accent); }
           // We try: 1) direct ID match on lights, 2) match via device owner (light.owner.rid === entertainment owner.rid)
           if (ea.channels && ea.channels.length > 0) {
             var lightsDiv = el("div", "ea-lights");
-            lightsDiv.appendChild(document.createTextNode("Lights: "));
-            var first = true;
+            lightsDiv.appendChild(document.createTextNode("Lights:"));
+            var ul = el("ul", "ea-lights-list");
             ea.channels.forEach(function(ch) {
               ch.members.forEach(function(m) {
-                if (!first) lightsDiv.appendChild(document.createTextNode(", "));
-                first = false;
                 var rid = m.service.rid;
                 // Try direct light match first
                 var found = lights.find(function(l) { return l.id === rid; });
-                // If not found, try to look up via entertainmentServiceMap (built below)
+                // If not found, try to look up via entertainmentServiceMap
                 if (!found && entertainmentServiceMap) {
                   var deviceId = entertainmentServiceMap.get(rid);
                   if (deviceId) {
@@ -291,11 +294,13 @@ h1 span { color: var(--accent); }
                   }
                 }
                 var name = found ? found.metadata.name : rid;
-                var nameSpan = el("span", null, name);
-                lightsDiv.appendChild(nameSpan);
-                lightsDiv.appendChild(el("span", "item-uuid", " (" + rid + ")"));
+                var liEl = document.createElement("li");
+                liEl.appendChild(document.createTextNode(name));
+                liEl.appendChild(el("span", "item-uuid", " (" + rid + ")"));
+                ul.appendChild(liEl);
               });
             });
+            lightsDiv.appendChild(ul);
             li.appendChild(lightsDiv);
           }
 
