@@ -223,10 +223,7 @@ function isRouterLike(obj: unknown): obj is RouterLike {
   if (obj === null || obj === undefined) return false;
   if (typeof obj !== "object" && typeof obj !== "function") return false;
   return (
-    "use" in obj &&
-    typeof obj.use === "function" &&
-    "get" in obj &&
-    typeof obj.get === "function"
+    "use" in obj && typeof obj.use === "function" && "get" in obj && typeof obj.get === "function"
   );
 }
 

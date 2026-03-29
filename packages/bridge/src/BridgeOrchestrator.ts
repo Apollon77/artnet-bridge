@@ -53,6 +53,7 @@ export class BridgeOrchestrator {
   private dmxMapper?: DmxMapper;
   private realtimeSchedulers = new Map<string, RealtimeScheduler>();
   private limitedSchedulers = new Map<string, Map<string, LimitedScheduler>>();
+  private readonly universeBuffers = new Map<number, Uint8Array>();
 
   private entityValues = new Map<string, { value: EntityValue; timestamp: number }>();
 
@@ -156,6 +157,7 @@ export class BridgeOrchestrator {
     this.realtimeSchedulers.clear();
     this.limitedSchedulers.clear();
     this.entityValues.clear();
+    this.universeBuffers.clear();
   }
 
   getAdapters(): ProtocolAdapter[] {
@@ -223,8 +225,18 @@ export class BridgeOrchestrator {
     this.frameCounts[universe] = (this.frameCounts[universe] ?? 0) + 1;
     this.lastFrameTime = Date.now();
 
+    // Accumulate partial frames into a full 512-byte universe buffer
+    let buffer = this.universeBuffers.get(universe);
+    if (!buffer) {
+      buffer = new Uint8Array(512);
+      this.universeBuffers.set(universe, buffer);
+    }
+    // Copy received data into the buffer (partial frames update only the channels they contain)
+    buffer.set(data.subarray(0, Math.min(data.length, 512)));
+
+    // Extract values from the full buffer
     if (!this.dmxMapper) return;
-    const values = this.dmxMapper.extractValues(universe, data);
+    const values = this.dmxMapper.extractValues(universe, buffer);
 
     for (const { bridgeId, entityId, value } of values) {
       const entity = this.findEntity(bridgeId, entityId);

@@ -10,6 +10,7 @@ Currently supports **Philips Hue** with both realtime entertainment streaming an
 - **Standard API control** -- rate-limited REST API for individual lights, groups (rooms/zones), and scene activation
 - **Multi-bridge support** -- connect multiple Hue bridges simultaneously, each with their own ArtNet universe
 - **Web UI** -- browser-based dashboard for configuration, live status monitoring, and debug controls
+- **Partial frame support** -- accumulates partial DMX frames per universe, so controllers that send only changed channels work correctly alongside full-frame controllers
 - **Extensible** -- protocol adapter interface for adding new lighting protocols (Matter, etc.)
 
 ## Installation

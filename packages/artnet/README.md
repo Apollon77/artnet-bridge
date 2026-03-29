@@ -99,6 +99,10 @@ import {
 } from "@artnet-bridge/artnet";
 ```
 
+## Partial DMX Frames
+
+ArtNet controllers can send partial DMX frames containing anywhere from 2 to 512 channels. The bridge accumulates partial frames per universe -- channels not included in the current frame retain their previous values. This supports both full-frame controllers (always 512 channels) and optimized controllers that only send changed channels.
+
 ## Protocol Compliance
 
 - Art-Net header validation ("Art-Net\0")
