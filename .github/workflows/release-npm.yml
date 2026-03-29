@@ -21,7 +21,7 @@ jobs:
     if: github.repository == 'Apollon77/artnet-bridge' && contains(github.event.pull_request.labels.*.name, 'automated-npm-release')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare testing environment
         uses: ./.github/actions/prepare-env
       - run: npm run format-verify
@@ -36,7 +36,7 @@ jobs:
         node-version: [ 22.x, 24.x ]
         os: [ macos-latest, windows-latest ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build on ${{ matrix.os }}
         uses: ./.github/actions/prepare-env
         with:
@@ -51,7 +51,7 @@ jobs:
       matrix:
         node-version: [ 22.x, 24.x ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare testing environment
         uses: ./.github/actions/prepare-env
         with:
@@ -84,7 +84,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.automerge.outputs.mergeResult == 'merged'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use Node.js 22.x
         if: steps.automerge.outputs.mergeResult == 'merged'
