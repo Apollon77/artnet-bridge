@@ -122,6 +122,7 @@ function createMockClient(
     getScenes: async () => overrides?.scenes ?? SCENES,
     getEntertainmentConfigurations: async () =>
       overrides?.entertainmentConfigs ?? ENTERTAINMENT_CONFIGS,
+    getEntertainmentServices: async () => [],
     setLightState: async (id: string, state: Record<string, unknown>) => {
       calls.setLightState.push({ id, state });
     },

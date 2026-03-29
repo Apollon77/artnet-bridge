@@ -6,3 +6,4 @@ dist/
 !/.oxlintrc.json
 !/.oxfmtrc.json
 !/.github
+!/.mocharc.yml
