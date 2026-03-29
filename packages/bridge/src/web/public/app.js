@@ -865,7 +865,7 @@ async function saveConfig() {
     config.artnet.bindAddress = $("#cfgArtnetBind").value || "0.0.0.0";
     config.artnet.port = Number($("#cfgArtnetPort").value) || 6454;
     await api("PUT", "/api/config", config);
-    toast(status, "ok", "Saved.");
+    toast(status, "ok", "Saved. Restart the bridge to apply changes.");
   } catch (e) {
     toast(status, "err", e.message);
   }
@@ -1058,7 +1058,7 @@ function renderMappingEditor(bridgeId) {
       freshConfig.bridges[bridgeIdx].channelMappings = newMappings;
       await api("PUT", "/api/config", freshConfig);
       config = freshConfig; // update local cache
-      saveStatusEl.textContent = "Saved \u2713";
+      saveStatusEl.textContent = "Saved \u2713 Restart the bridge to apply changes.";
 
       // Reload entities to update DMX column
       await loadEntities(bridgeId);
