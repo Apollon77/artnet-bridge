@@ -502,10 +502,17 @@ function renderEntities(bridgeId, entities, liveData) {
     tdColor.appendChild(swatch);
     const rgbLabel = document.createElement("span");
     rgbLabel.className = "muted";
-    if (rgb) {
+    var rawVal = live?.rawValue;
+    if (rawVal && rawVal.type === "scene-selector") {
+      // Show active scene name
+      var sceneName = rawVal.sceneId;
+      if (e.channelLayout?.type === "scene-selector" && e.channelLayout.scenes) {
+        var found = e.channelLayout.scenes.find(function (s) { return s.sceneId === rawVal.sceneId; });
+        if (found) sceneName = found.name;
+      }
+      rgbLabel.textContent = "\u{1F3AC} " + sceneName;
+    } else if (rgb) {
       var colorText = rgb[0] + ", " + rgb[1] + ", " + rgb[2];
-      // Show dimmer percentage for rgb-dimmable values
-      var rawVal = live?.rawValue;
       if (rawVal && rawVal.type === "rgb-dimmable") {
         var dimPct = Math.round((rawVal.dim / 65535) * 100);
         colorText += " @ " + dimPct + "%";
@@ -988,6 +995,7 @@ function renderMappingEditor(bridgeId) {
       entityType: ent.metadata?.type || "unknown",
       controlMode: ent.controlMode || "limited",
       layoutType: layoutType,
+      scenes: ent.channelLayout?.scenes || null,
       compatibleModes: modes,
       dmxStart: dmxStart,
       mode: mode
@@ -1353,6 +1361,24 @@ function renderMappingEditor(bridgeId) {
         tr.appendChild(tdClear);
 
         tbody.appendChild(tr);
+
+        // For scene-selectors: show the index→name mapping as a reference row
+        if (ms.layoutType === "scene-selector" && ms.scenes && ms.scenes.length > 0 && ms.dmxStart != null) {
+          var sceneTr = document.createElement("tr");
+          var sceneTd = document.createElement("td");
+          sceneTd.colSpan = 8;
+          sceneTd.style.paddingLeft = "32px";
+          sceneTd.style.fontSize = "0.75rem";
+          sceneTd.style.color = "var(--muted)";
+          var sceneText = "Scene values: ";
+          for (var si = 0; si < ms.scenes.length; si++) {
+            if (si > 0) sceneText += ", ";
+            sceneText += ms.scenes[si].index + "=" + ms.scenes[si].name;
+          }
+          sceneTd.textContent = sceneText;
+          sceneTr.appendChild(sceneTd);
+          tbody.appendChild(sceneTr);
+        }
       })(i);
     }
     table.appendChild(tbody);
