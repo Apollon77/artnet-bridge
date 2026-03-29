@@ -334,6 +334,19 @@ export class HueProtocolAdapter implements ProtocolAdapter {
               }
             }
           }
+        } else if (entertainmentConfigs.length === 1) {
+          // Auto-select the only available entertainment area
+          const only = entertainmentConfigs[0];
+          activeEntConfig = only;
+          state.entertainmentConfig = only;
+          console.info(
+            `[Hue] Auto-selected entertainment area: ${only.metadata.name} (only one available)`,
+          );
+          for (const channel of only.channels) {
+            for (const member of channel.members) {
+              state.entertainmentLightIds.add(member.service.rid);
+            }
+          }
         }
 
         // Build entity list
@@ -822,9 +835,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
       }
 
       // Check if any light in the group supports color
-      const groupLightIds = group.children
-        .filter((c) => c.rtype === "light")
-        .map((c) => c.rid);
+      const groupLightIds = group.children.filter((c) => c.rtype === "light").map((c) => c.rid);
       const hasAnyColorLight = groupLightIds.some((lid) =>
         lights.some((l) => l.id === lid && lightHasColor(l)),
       );

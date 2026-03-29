@@ -76,6 +76,7 @@ describe("WebSocketHandler", () => {
       realtimeCount: 2,
       limitedCount: 1,
       rateLimitUsage: {},
+      entities: {},
     };
 
     const ws = await connectWs(port);
@@ -100,6 +101,7 @@ describe("WebSocketHandler", () => {
       realtimeCount: 0,
       limitedCount: 1,
       rateLimitUsage: {},
+      entities: {},
     };
 
     const ws = await connectWs(port);
@@ -150,6 +152,7 @@ describe("WebSocketHandler", () => {
         realtimeCount: 0,
         limitedCount: 0,
         rateLimitUsage: {},
+        entities: {},
       };
       ws.send(JSON.stringify({ type: "subscribe", bridgeId: "bridge-3" }));
       const raw = await waitForMessage(ws);

@@ -22,6 +22,11 @@ export interface RuntimeStatus {
   bridges: Record<string, BridgeRuntimeStatus>;
 }
 
+export interface EntityRuntimeStatus {
+  lastValue?: EntityValue;
+  lastUpdate?: number;
+}
+
 export interface BridgeRuntimeStatus {
   connected: boolean;
   streaming?: boolean;
@@ -29,6 +34,7 @@ export interface BridgeRuntimeStatus {
   realtimeCount: number;
   limitedCount: number;
   rateLimitUsage: Record<string, { current: number; max: number }>;
+  entities: Record<string, EntityRuntimeStatus>;
 }
 
 export interface ProtocolAdapterFactory {
@@ -47,6 +53,8 @@ export class BridgeOrchestrator {
   private dmxMapper?: DmxMapper;
   private realtimeSchedulers = new Map<string, RealtimeScheduler>();
   private limitedSchedulers = new Map<string, Map<string, LimitedScheduler>>();
+
+  private entityValues = new Map<string, { value: EntityValue; timestamp: number }>();
 
   private running = false;
   private frameCount = 0;
@@ -147,6 +155,7 @@ export class BridgeOrchestrator {
     this.dmxMapper = undefined;
     this.realtimeSchedulers.clear();
     this.limitedSchedulers.clear();
+    this.entityValues.clear();
   }
 
   getAdapters(): ProtocolAdapter[] {
@@ -176,6 +185,17 @@ export class BridgeOrchestrator {
         rateLimitUsage[category] = { current: effectiveRate, max: budget.maxPerSecond };
       }
 
+      const entityStatuses: Record<string, EntityRuntimeStatus> = {};
+      for (const entity of protocolBridge.entities) {
+        const tracked = this.entityValues.get(`${protocolBridge.id}:${entity.id}`);
+        if (tracked) {
+          entityStatuses[entity.id] = {
+            lastValue: tracked.value,
+            lastUpdate: tracked.timestamp,
+          };
+        }
+      }
+
       bridges[protocolBridge.id] = {
         connected: bridgeStatus?.connected ?? false,
         streaming: bridgeStatus?.streaming,
@@ -183,6 +203,7 @@ export class BridgeOrchestrator {
         realtimeCount,
         limitedCount,
         rateLimitUsage,
+        entities: entityStatuses,
       };
     }
 
@@ -208,6 +229,9 @@ export class BridgeOrchestrator {
     for (const { bridgeId, entityId, value } of values) {
       const entity = this.findEntity(bridgeId, entityId);
       if (!entity) continue;
+
+      // Track live values for status reporting
+      this.entityValues.set(`${bridgeId}:${entityId}`, { value, timestamp: Date.now() });
 
       if (entity.controlMode === "realtime") {
         const scheduler = this.realtimeSchedulers.get(bridgeId);

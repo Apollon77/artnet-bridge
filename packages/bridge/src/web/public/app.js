@@ -9,6 +9,9 @@ let config = null;
 /** Active WebSocket connections per bridge detail panel */
 const wsConnections = new Map();
 
+/** Cached entity lists per bridge for live re-rendering */
+const bridgeEntitiesCache = new Map();
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function escapeHtml(s) {
@@ -50,6 +53,22 @@ function fmtAgo(ts) {
   if (s < 60) return s + "s ago";
   const m = Math.round(s / 60);
   return m + "m ago";
+}
+
+function entityValueToRgb(value) {
+  if (!value) return null;
+  if (value.type === "rgb") {
+    return [Math.round(value.r / 257), Math.round(value.g / 257), Math.round(value.b / 257)];
+  }
+  if (value.type === "rgb-dimmable") {
+    var d = value.dim / 65535;
+    return [Math.round(value.r / 257 * d), Math.round(value.g / 257 * d), Math.round(value.b / 257 * d)];
+  }
+  if (value.type === "brightness") {
+    var v = Math.round(value.value / 257);
+    return [v, v, v];
+  }
+  return null;
 }
 
 /** Create an element with className and textContent */
@@ -213,7 +232,9 @@ function openDetail(bridgeId, detailDiv, toggleBtn) {
 
   detailDiv.textContent = "";
 
-  detailDiv.appendChild(el("div", "muted", "Connecting to live updates..."));
+  const wsStatusEl = el("div", "muted", "Connecting to live updates...");
+  wsStatusEl.id = "ws-status-" + bridgeId;
+  detailDiv.appendChild(wsStatusEl);
   detailDiv.appendChild(el("div", "divider"));
 
   const entitiesContainer = el("div", "muted", "Loading entities...");
@@ -282,6 +303,7 @@ async function loadEntities(bridgeId) {
       "GET",
       "/api/bridges/" + encodeURIComponent(bridgeId) + "/resources",
     );
+    bridgeEntitiesCache.set(bridgeId, entities);
     renderEntities(bridgeId, entities, null);
   } catch {
     root.textContent = "Could not load entities.";
@@ -399,6 +421,15 @@ function connectWs(bridgeId) {
 
   ws.addEventListener("open", () => {
     ws.send(JSON.stringify({ type: "subscribe", bridgeId: bridgeId }));
+    const wsStatusEl = document.getElementById("ws-status-" + bridgeId);
+    if (wsStatusEl) {
+      wsStatusEl.textContent = "";
+      const dot = el("span", "dot connected");
+      dot.style.display = "inline-block";
+      dot.style.marginRight = "6px";
+      wsStatusEl.appendChild(dot);
+      wsStatusEl.appendChild(document.createTextNode("Live"));
+    }
   });
 
   ws.addEventListener("message", (event) => {
@@ -420,6 +451,26 @@ function connectWs(bridgeId) {
 
       // Update budget bars
       renderBudgets(bridgeId, msg.data.rateLimitUsage);
+
+      // Build live data from entity statuses
+      var liveData = { entities: {} };
+      if (msg.data.entities) {
+        for (var _a = 0, _b = Object.entries(msg.data.entities); _a < _b.length; _a++) {
+          var pair = _b[_a];
+          var eid = pair[0];
+          var estat = pair[1];
+          liveData.entities[eid] = {
+            rgb: entityValueToRgb(estat.lastValue),
+            lastUpdate: estat.lastUpdate,
+          };
+        }
+      }
+
+      // Re-render entities with live data
+      var cachedEntities = bridgeEntitiesCache.get(bridgeId);
+      if (cachedEntities) {
+        renderEntities(bridgeId, cachedEntities, liveData);
+      }
     }
   });
 
