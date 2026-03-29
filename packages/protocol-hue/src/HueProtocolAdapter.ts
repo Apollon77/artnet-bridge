@@ -499,6 +499,24 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           channelId,
           color: [update.value.r, update.value.g, update.value.b],
         });
+      } else if (update.value.type === "rgb-dimmable") {
+        // Apply dimmer to RGB: dim is 0-65535, scale RGB by dim/65535
+        const dimFactor = update.value.dim / 65535;
+        colorUpdates.push({
+          channelId,
+          color: [
+            Math.round(update.value.r * dimFactor),
+            Math.round(update.value.g * dimFactor),
+            Math.round(update.value.b * dimFactor),
+          ],
+        });
+      } else if (update.value.type === "brightness") {
+        // Brightness-only: set all RGB channels to the same value (white)
+        const v = update.value.value;
+        colorUpdates.push({
+          channelId,
+          color: [v, v, v],
+        });
       }
     }
 
