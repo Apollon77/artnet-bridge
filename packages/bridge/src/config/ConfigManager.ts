@@ -44,6 +44,12 @@ export class ConfigManager {
       throw new Error(`Config file is corrupt (invalid JSON): ${this.configPath}`);
     }
 
+    // Validate loaded config and log warnings (don't throw — config might be loadable)
+    const warnings = validateConfig(config);
+    if (warnings.length > 0) {
+      console.warn("[Config] Validation warnings:", warnings.join("; "));
+    }
+
     // Migrate if version is old
     if (config.version !== CURRENT_CONFIG_VERSION) {
       const backupPath = this.configPath.replace(/\.json$/, ".backup.json");

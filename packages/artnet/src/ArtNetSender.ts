@@ -25,7 +25,7 @@ export class ArtNetSender {
     this.socket = createSocket({ type: "udp4", reuseAddr: true });
 
     // Prevent unhandled error crashes
-    this.socket.on("error", () => {});
+    this.socket.on("error", (err) => console.error("[ArtNet] Sender socket error:", err.message));
 
     // setBroadcast requires the socket to be bound; bind to an ephemeral port first
     this.socket.bind(0, () => {

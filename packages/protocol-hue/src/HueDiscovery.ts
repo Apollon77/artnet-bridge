@@ -80,6 +80,8 @@ export async function discoverBridges(
   } catch (error) {
     // Network errors, DNS failures, timeouts etc. — return empty list
     // so callers can fall back to manual IP entry.
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn("[Hue] Bridge discovery failed:", message);
     return [];
   }
 }

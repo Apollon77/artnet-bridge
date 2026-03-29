@@ -800,7 +800,7 @@ function renderBridgeConfigList() {
         const tr = document.createElement("tr");
 
         const tdEntity = document.createElement("td");
-        tdEntity.appendChild(pill(m.entityId));
+        tdEntity.appendChild(pill(m.targetId));
         tr.appendChild(tdEntity);
 
         const tdStart = document.createElement("td");

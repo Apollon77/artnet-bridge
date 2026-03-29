@@ -491,20 +491,30 @@ export class HueProtocolAdapter implements ProtocolAdapter {
 
     if (!state.dtlsStream) {
       // DTLS not connected — attempt to start streaming if not already retrying
-      if (!state.entertainmentRetryTimer && state.entertainmentConfig && !state.streamingRetryPending) {
+      if (
+        !state.entertainmentRetryTimer &&
+        state.entertainmentConfig &&
+        !state.streamingRetryPending
+      ) {
         state.streamingRetryPending = true;
-        console.log(`[Hue] No DTLS stream for ${bridgeId} — attempting to start entertainment streaming`);
+        console.log(
+          `[Hue] No DTLS stream for ${bridgeId} — attempting to start entertainment streaming`,
+        );
         this.startEntertainmentStreaming(
           state,
           state.client,
           state.config,
           state.entertainmentConfig,
-        ).then(() => {
-          state.streamingRetryPending = false;
-        }).catch((err) => {
-          state.streamingRetryPending = false;
-          console.warn(`[Hue] Failed to start entertainment streaming: ${err instanceof Error ? err.message : String(err)}`);
-        });
+        )
+          .then(() => {
+            state.streamingRetryPending = false;
+          })
+          .catch((err) => {
+            state.streamingRetryPending = false;
+            console.warn(
+              `[Hue] Failed to start entertainment streaming: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          });
       }
       return;
     }
@@ -571,81 +581,15 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     try {
       switch (entity.category) {
         case "light": {
-          if (value.type === "rgb") {
-            const isOff = value.r === 0 && value.g === 0 && value.b === 0;
-            if (isOff) {
-              await state.client.setLightState(entityId, { on: { on: false } });
-            } else {
-              const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
-              await state.client.setLightState(entityId, {
-                on: { on: true },
-                color: { xy: { x, y } },
-                dimming: { brightness: Math.max(bri, 1) },
-              });
-            }
-          } else if (value.type === "rgb-dimmable") {
-            const isOff = value.dim === 0 || (value.r === 0 && value.g === 0 && value.b === 0);
-            if (isOff) {
-              await state.client.setLightState(entityId, { on: { on: false } });
-            } else {
-              const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
-              const brightness = (value.dim / 65535) * 100;
-              await state.client.setLightState(entityId, {
-                on: { on: true },
-                color: { xy: { x, y } },
-                dimming: { brightness: Math.max(brightness, 1) },
-              });
-            }
-          } else if (value.type === "brightness") {
-            if (value.value === 0) {
-              await state.client.setLightState(entityId, { on: { on: false } });
-            } else {
-              const brightness = (value.value / 65535) * 100;
-              await state.client.setLightState(entityId, {
-                on: { on: true },
-                dimming: { brightness: Math.max(brightness, 1) },
-              });
-            }
-          }
+          await this.applyColorState((id, s) => state.client.setLightState(id, s), entityId, value);
           break;
         }
         case "group": {
-          if (value.type === "brightness") {
-            if (value.value === 0) {
-              await state.client.setGroupedLightState(entityId, { on: { on: false } });
-            } else {
-              const brightness = (value.value / 65535) * 100;
-              await state.client.setGroupedLightState(entityId, {
-                on: { on: true },
-                dimming: { brightness: Math.max(brightness, 1) },
-              });
-            }
-          } else if (value.type === "rgb") {
-            const isOff = value.r === 0 && value.g === 0 && value.b === 0;
-            if (isOff) {
-              await state.client.setGroupedLightState(entityId, { on: { on: false } });
-            } else {
-              const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
-              await state.client.setGroupedLightState(entityId, {
-                on: { on: true },
-                color: { xy: { x, y } },
-                dimming: { brightness: Math.max(bri, 1) },
-              });
-            }
-          } else if (value.type === "rgb-dimmable") {
-            const isOff = value.dim === 0 || (value.r === 0 && value.g === 0 && value.b === 0);
-            if (isOff) {
-              await state.client.setGroupedLightState(entityId, { on: { on: false } });
-            } else {
-              const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
-              const brightness = (value.dim / 65535) * 100;
-              await state.client.setGroupedLightState(entityId, {
-                on: { on: true },
-                color: { xy: { x, y } },
-                dimming: { brightness: Math.max(brightness, 1) },
-              });
-            }
-          }
+          await this.applyColorState(
+            (id, s) => state.client.setGroupedLightState(id, s),
+            entityId,
+            value,
+          );
           break;
         }
         case "scene": {
@@ -653,6 +597,11 @@ export class HueProtocolAdapter implements ProtocolAdapter {
             await state.client.activateScene(value.sceneId);
           }
           break;
+        }
+        default: {
+          console.warn(
+            `[Hue] Unhandled entity category "${entity.category}" for entity ${entityId}`,
+          );
         }
       }
 
@@ -722,8 +671,91 @@ export class HueProtocolAdapter implements ProtocolAdapter {
   }
 
   // -----------------------------------------------------------------------
+  // Private — color state dispatch
+  // -----------------------------------------------------------------------
+
+  private async applyColorState(
+    setter: (id: string, state: Record<string, unknown>) => Promise<void>,
+    entityId: string,
+    value: EntityValue,
+  ): Promise<void> {
+    if (value.type === "rgb") {
+      const isOff = value.r === 0 && value.g === 0 && value.b === 0;
+      if (isOff) {
+        await setter(entityId, { on: { on: false } });
+      } else {
+        const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
+        await setter(entityId, {
+          on: { on: true },
+          color: { xy: { x, y } },
+          dimming: { brightness: Math.max(bri, 1) },
+        });
+      }
+    } else if (value.type === "rgb-dimmable") {
+      const isOff = value.dim === 0 || (value.r === 0 && value.g === 0 && value.b === 0);
+      if (isOff) {
+        await setter(entityId, { on: { on: false } });
+      } else {
+        const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
+        const brightness = (value.dim / 65535) * 100;
+        await setter(entityId, {
+          on: { on: true },
+          color: { xy: { x, y } },
+          dimming: { brightness: Math.max(brightness, 1) },
+        });
+      }
+    } else if (value.type === "brightness") {
+      if (value.value === 0) {
+        await setter(entityId, { on: { on: false } });
+      } else {
+        const brightness = (value.value / 65535) * 100;
+        await setter(entityId, {
+          on: { on: true },
+          dimming: { brightness: Math.max(brightness, 1) },
+        });
+      }
+    } else {
+      console.warn(`[Hue] Unhandled value type "${value.type}" for entity ${entityId}`);
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Private — entertainment streaming
   // -----------------------------------------------------------------------
+
+  private async connectEntertainmentStream(
+    state: BridgeState,
+    client: HueClipClient,
+    bridgeConfig: HueBridgeConfig,
+    entertainmentConfig: HueEntertainmentConfiguration,
+  ): Promise<void> {
+    const appId = await client.getApplicationId();
+    await client.startEntertainment(entertainmentConfig.id);
+
+    const dtlsCallbacks: DtlsStreamCallbacks = {
+      onDisconnected: () => {
+        console.warn(`[Hue] DTLS disconnected on bridge ${bridgeConfig.id}`);
+        state.streaming = false;
+      },
+      onReconnecting: async (attempt: number) => {
+        console.info(
+          `[Hue] DTLS reconnect attempt ${String(attempt)} on bridge ${bridgeConfig.id}`,
+        );
+        await client.startEntertainment(entertainmentConfig.id);
+      },
+    };
+
+    const dtlsStream = this.createDtlsStream(
+      bridgeConfig.connection.host,
+      appId,
+      bridgeConfig.connection.clientkey,
+      entertainmentConfig.id,
+      dtlsCallbacks,
+    );
+    await dtlsStream.connect();
+    state.dtlsStream = dtlsStream;
+    state.streaming = true;
+  }
 
   private async startEntertainmentStreaming(
     state: BridgeState,
@@ -732,33 +764,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     entertainmentConfig: HueEntertainmentConfiguration,
   ): Promise<void> {
     try {
-      const appId = await client.getApplicationId();
-      await client.startEntertainment(entertainmentConfig.id);
-
-      const dtlsCallbacks: DtlsStreamCallbacks = {
-        onDisconnected: () => {
-          console.warn(`[Hue] DTLS disconnected on bridge ${bridgeConfig.id}`);
-          state.streaming = false;
-        },
-        onReconnecting: async (attempt: number) => {
-          console.info(
-            `[Hue] DTLS reconnect attempt ${String(attempt)} on bridge ${bridgeConfig.id}`,
-          );
-          // Re-activate entertainment config via REST before DTLS can reconnect
-          await client.startEntertainment(entertainmentConfig.id);
-        },
-      };
-
-      const dtlsStream = this.createDtlsStream(
-        bridgeConfig.connection.host,
-        appId,
-        bridgeConfig.connection.clientkey,
-        entertainmentConfig.id,
-        dtlsCallbacks,
-      );
-      await dtlsStream.connect();
-      state.dtlsStream = dtlsStream;
-      state.streaming = true;
+      await this.connectEntertainmentStream(state, client, bridgeConfig, entertainmentConfig);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
 
@@ -773,7 +779,8 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         if (state.entertainmentRetryTimer === null) {
           state.entertainmentRetryTimer = setInterval(() => {
             this.retryEntertainmentStart(state, client, bridgeConfig, entertainmentConfig).catch(
-              (err) => console.warn(`[Hue] Entertainment retry error on ${bridgeConfig.id}:`, err),
+              (retryErr) =>
+                console.warn(`[Hue] Entertainment retry error on ${bridgeConfig.id}:`, retryErr),
             );
           }, 30_000);
         }
@@ -795,32 +802,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     entertainmentConfig: HueEntertainmentConfiguration,
   ): Promise<void> {
     try {
-      const appId = await client.getApplicationId();
-      await client.startEntertainment(entertainmentConfig.id);
-
-      const dtlsCallbacks: DtlsStreamCallbacks = {
-        onDisconnected: () => {
-          console.warn(`[Hue] DTLS disconnected on bridge ${bridgeConfig.id}`);
-          state.streaming = false;
-        },
-        onReconnecting: async (attempt: number) => {
-          console.info(
-            `[Hue] DTLS reconnect attempt ${String(attempt)} on bridge ${bridgeConfig.id}`,
-          );
-          await client.startEntertainment(entertainmentConfig.id);
-        },
-      };
-
-      const dtlsStream = this.createDtlsStream(
-        bridgeConfig.connection.host,
-        appId,
-        bridgeConfig.connection.clientkey,
-        entertainmentConfig.id,
-        dtlsCallbacks,
-      );
-      await dtlsStream.connect();
-      state.dtlsStream = dtlsStream;
-      state.streaming = true;
+      await this.connectEntertainmentStream(state, client, bridgeConfig, entertainmentConfig);
 
       // Success — clear the retry timer
       if (state.entertainmentRetryTimer !== null) {

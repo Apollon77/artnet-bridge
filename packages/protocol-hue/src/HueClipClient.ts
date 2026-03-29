@@ -322,7 +322,9 @@ export class HueClipClient {
         ) {
           const errDescriptions = parsed.errors
             .map((e: unknown) =>
-              typeof e === "object" && e !== null && "description" in e ? String(e.description) : "unknown error",
+              typeof e === "object" && e !== null && "description" in e
+                ? String(e.description)
+                : "unknown error",
             )
             .join("; ");
           console.warn(`[Hue] API warning for PUT ${resource}: ${errDescriptions}`);

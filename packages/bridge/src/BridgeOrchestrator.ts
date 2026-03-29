@@ -250,15 +250,14 @@ export class BridgeOrchestrator {
 
       const rateLimitUsage: Record<string, { current: number; max: number }> = {};
       const elapsed = this.statsIntervalSec > 0 ? this.statsIntervalSec : 10;
-      for (const [category, budget] of Object.entries(protocolBridge.rateLimits)) {
-        const bridgeConfig = this.config.bridges.find((b) => b.id === protocolBridge.id);
-        const userRate = bridgeConfig?.rateLimits?.[category];
-        const configuredRate = Math.min(userRate ?? budget.defaultPerSecond, budget.maxPerSecond);
+      for (const category of Object.keys(protocolBridge.rateLimits)) {
+        const configuredRate = this.resolveRate(protocolBridge, category);
 
         // Actual dispatches per second from the current stats window
         let actualPerSec = 0;
         if (category === "realtime-light" || category === "realtime") {
-          actualPerSec = Math.round(((this.statsRealtimeChanges[protocolBridge.id] ?? 0) / elapsed) * 10) / 10;
+          actualPerSec =
+            Math.round(((this.statsRealtimeChanges[protocolBridge.id] ?? 0) / elapsed) * 10) / 10;
         } else {
           const catDispatches = this.statsLimitedDispatches[protocolBridge.id]?.[category] ?? 0;
           actualPerSec = Math.round((catDispatches / elapsed) * 10) / 10;
@@ -387,17 +386,11 @@ export class BridgeOrchestrator {
       // One RealtimeScheduler per bridge
       const realtimeEntities = protocolBridge.entities.filter((e) => e.controlMode === "realtime");
       if (realtimeEntities.length > 0) {
-        const rateLimit = protocolBridge.rateLimits["realtime-light"] ??
-          protocolBridge.rateLimits["realtime"] ?? {
-            defaultPerSecond: 6,
-            maxPerSecond: 6,
-            description: "",
-          };
-
-        const bridgeConfig = this.config.bridges.find((b) => b.id === protocolBridge.id);
-        const userRate =
-          bridgeConfig?.rateLimits?.["realtime-light"] ?? bridgeConfig?.rateLimits?.["realtime"];
-        const rate = Math.min(userRate ?? rateLimit.defaultPerSecond, rateLimit.maxPerSecond);
+        const rate = protocolBridge.rateLimits["realtime-light"]
+          ? this.resolveRate(protocolBridge, "realtime-light")
+          : protocolBridge.rateLimits["realtime"]
+            ? this.resolveRate(protocolBridge, "realtime")
+            : 6;
 
         const capturedAdapter = adapter;
         const capturedBridgeId = protocolBridge.id;
@@ -417,15 +410,7 @@ export class BridgeOrchestrator {
         protocolBridge.entities.filter((e) => e.controlMode === "limited").map((e) => e.category),
       );
       for (const category of categories) {
-        const rateLimit = protocolBridge.rateLimits[category] ?? {
-          defaultPerSecond: 1,
-          maxPerSecond: 1,
-          description: "",
-        };
-
-        const bridgeConfig = this.config.bridges.find((b) => b.id === protocolBridge.id);
-        const userRate = bridgeConfig?.rateLimits?.[category];
-        const rate = Math.min(userRate ?? rateLimit.defaultPerSecond, rateLimit.maxPerSecond);
+        const rate = this.resolveRate(protocolBridge, category);
 
         const capturedAdapter = adapter;
         const capturedBridgeId = protocolBridge.id;
@@ -446,18 +431,11 @@ export class BridgeOrchestrator {
       // Log scheduler creation
       const limitedCategories = [...categories];
       if (realtimeEntities.length > 0 || limitedCategories.length > 0) {
-        const bridgeConfig = this.config.bridges.find((b) => b.id === protocolBridge.id);
-        const realtimeRateLimit = protocolBridge.rateLimits["realtime-light"] ??
-          protocolBridge.rateLimits["realtime"] ?? {
-            defaultPerSecond: 6,
-            maxPerSecond: 6,
-          };
-        const userRealtimeRate =
-          bridgeConfig?.rateLimits?.["realtime-light"] ?? bridgeConfig?.rateLimits?.["realtime"];
-        const realtimeRate = Math.min(
-          userRealtimeRate ?? realtimeRateLimit.defaultPerSecond,
-          realtimeRateLimit.maxPerSecond,
-        );
+        const realtimeRate = protocolBridge.rateLimits["realtime-light"]
+          ? this.resolveRate(protocolBridge, "realtime-light")
+          : protocolBridge.rateLimits["realtime"]
+            ? this.resolveRate(protocolBridge, "realtime")
+            : 6;
         const parts: string[] = [];
         if (realtimeEntities.length > 0) parts.push(`realtime at ${realtimeRate}Hz`);
         if (limitedCategories.length > 0) parts.push(`limited: ${limitedCategories.join(", ")}`);
@@ -513,6 +491,14 @@ export class BridgeOrchestrator {
     this.statsFrameCounts = {};
     this.statsRealtimeChanges = {};
     this.statsLimitedDispatches = {};
+  }
+
+  private resolveRate(protocolBridge: ProtocolBridge, category: string): number {
+    const budget = protocolBridge.rateLimits[category];
+    if (!budget) return 1;
+    const bridgeConfig = this.config.bridges.find((b) => b.id === protocolBridge.id);
+    const userRate = bridgeConfig?.rateLimits?.[category];
+    return Math.min(userRate ?? budget.defaultPerSecond, budget.maxPerSecond);
   }
 
   private findEntity(bridgeId: string, entityId: string): Entity | undefined {

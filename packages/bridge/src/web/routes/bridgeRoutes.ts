@@ -7,7 +7,13 @@ import type { BridgeConfig } from "../../config/ConfigSchema.js";
 export function createBridgeRoutes(
   adapters: ProtocolAdapter[],
   configManager?: ConfigManager,
-  orchestrator?: { setEntityValue(bridgeId: string, entityId: string, value: import("@artnet-bridge/protocol").EntityValue): void },
+  orchestrator?: {
+    setEntityValue(
+      bridgeId: string,
+      entityId: string,
+      value: import("@artnet-bridge/protocol").EntityValue,
+    ): void;
+  },
 ): Router {
   const router = Router();
 
@@ -147,7 +153,7 @@ export function createBridgeRoutes(
       // Try realtime entities first, then limited
       const realtimeEntities = selectedEntities.filter((e) => e.controlMode === "realtime");
       const limitedEntities = selectedEntities.filter(
-        (e) => e.controlMode === "limited" && e.category === "light",
+        (e) => e.controlMode === "limited" && (e.category === "light" || e.category === "group"),
       );
 
       // Send as rgb-dimmable with 100% dimmer for clear visual feedback
