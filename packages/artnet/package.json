@@ -23,7 +23,7 @@
     },
     "homepage": "https://github.com/Apollon77/artnet-bridge",
     "devDependencies": {
-        "@types/node": "^25.5.0"
+        "@types/node": "^25.6.0"
     },
     "files": [
         "dist/**/*",
