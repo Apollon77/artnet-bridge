@@ -6,17 +6,18 @@
 <title>Hue Configuration</title>
 <style>
 :root {
-  --bg: #1a1a2e;
-  --panel: rgba(255, 255, 255, 0.06);
-  --panel-2: rgba(255, 255, 255, 0.08);
-  --text: #e0e0e0;
-  --muted: rgba(255, 255, 255, 0.6);
-  --border: rgba(255, 255, 255, 0.12);
-  --accent: #7c5cff;
-  --accent-2: #2dd4bf;
-  --danger: #ff5c7a;
-  --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-  --radius: 14px;
+  --bg: #13161d;
+  --panel: rgba(255, 255, 255, 0.05);
+  --panel-2: rgba(255, 255, 255, 0.07);
+  --text: #d4d4d4;
+  --muted: rgba(255, 255, 255, 0.5);
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #c89b5a;
+  --accent-2: #5a9e78;
+  --danger: #cc4444;
+  --warning: #c89030;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --radius: 6px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
 }
@@ -26,35 +27,31 @@ body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     "Apple Color Emoji", "Segoe UI Emoji";
-  background: radial-gradient(1200px 500px at 20% -10%, rgba(124,92,255,0.25), transparent 60%),
-    radial-gradient(900px 400px at 110% 10%, rgba(45,212,191,0.15), transparent 55%), var(--bg);
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  background-color: var(--bg);
+  background: var(--bg);
   color: var(--text);
   min-height: 100%;
 }
 .app { max-width: 900px; margin: 0 auto; padding: 24px; }
 h1 { font-size: 1.5rem; margin-bottom: 4px; }
-h1 span { color: var(--accent); }
+h1 span { color: var(--text); }
 .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
-.back-link { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
-.back-link:hover { text-decoration: underline; }
+.back-link { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
+.back-link:hover { color: var(--text); text-decoration: underline; }
 
 .bridge-section {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 20px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 .bridge-title { font-size: 1.1rem; font-weight: 600; margin: 0 0 4px; }
 .bridge-id { color: var(--muted); font-size: 0.8rem; font-family: var(--mono); margin-bottom: 16px; }
 
 .section-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--accent-2);
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 16px 0 8px;
@@ -69,14 +66,14 @@ h1 span { color: var(--accent); }
   padding: 10px 14px;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   margin-bottom: 8px;
   cursor: pointer;
   transition: border-color 0.15s;
 }
-.ea-item:hover { border-color: var(--accent); }
-.ea-item.selected { border-color: var(--accent); background: rgba(124,92,255,0.1); }
-.ea-item input[type="radio"] { accent-color: var(--accent); }
+.ea-item:hover { border-color: rgba(200, 155, 90, 0.4); }
+.ea-item.selected { border-color: var(--accent); background: rgba(200, 155, 90, 0.08); }
+.ea-item input[type="radio"] { accent-color: var(--accent); width: 14px; height: 14px; }
 .ea-name { font-weight: 500; }
 .ea-status { color: var(--muted); font-size: 0.8rem; margin-left: auto; }
 .ea-channels { color: var(--muted); font-size: 0.8rem; }
@@ -95,10 +92,10 @@ h1 span { color: var(--accent); }
   padding: 8px 12px;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 0.85rem;
 }
-.light-chip.in-ea { border-color: var(--accent); color: var(--accent); }
+.light-chip.in-ea { border-color: rgba(200, 155, 90, 0.4); color: var(--accent); }
 
 .resource-list { list-style: none; padding: 0; margin: 0; }
 .resource-item {
@@ -114,16 +111,18 @@ h1 span { color: var(--accent); }
 
 .btn {
   display: inline-block;
-  padding: 8px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  transition: background 0.1s ease;
 }
-.btn:hover { opacity: 0.85; }
-.btn-primary { background: var(--accent); color: #fff; }
+.btn:hover { background: rgba(255, 255, 255, 0.08); }
+.btn-primary { background: rgba(200, 155, 90, 0.18); border: 1px solid rgba(200, 155, 90, 0.5); color: var(--accent); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .save-row { margin-top: 16px; display: flex; align-items: center; gap: 12px; }
 .save-msg { font-size: 0.85rem; color: var(--accent-2); }
@@ -137,7 +136,7 @@ h1 span { color: var(--accent); }
   display: flex; align-items: center; gap: 12px; cursor: pointer;
   user-select: none;
 }
-.bridge-header:hover .bridge-title { color: var(--accent); }
+.bridge-header:hover .bridge-title { color: var(--text); }
 .bridge-toggle {
   font-size: 0.75rem; color: var(--muted); transition: transform 0.2s;
   display: inline-block; width: 1em; text-align: center;
