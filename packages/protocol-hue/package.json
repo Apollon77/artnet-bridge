@@ -26,7 +26,7 @@
     "dependencies": {
         "@artnet-bridge/protocol": "*",
         "express": "^5.2.1",
-        "node-dtls-client": "^2.0.0"
+        "node-dtls-client": "^2.0.2"
     },
     "devDependencies": {
         "@types/express": "^5.0.6",

@@ -20,7 +20,6 @@
     "author": "Ingo Fischer",
     "license": "MIT",
     "scripts": {
-        "postinstall": "node scripts/patch-dtls-client.js",
         "prepare": "npm run build-clean",
         "clean": "node packages/tools/bin/build.js clean",
         "build-only": "node packages/tools/bin/build.js",
