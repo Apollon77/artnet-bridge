@@ -4,9 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import colors from "ansi-colors";
 import { spawn, SpawnOptions } from "node:child_process";
 import { platform } from "node:os";
+
+import colors from "ansi-colors";
 
 export async function execute(bin: string, argv: string[], env?: typeof process.env) {
   return new Promise<number>((resolve, reject) => {
@@ -46,16 +47,24 @@ export async function execute(bin: string, argv: string[], env?: typeof process.
 }
 
 export async function executeNode(script: string, argv: string[], nodeArgv = Array<string>()) {
-  argv = ["--enable-source-maps", ...nodeArgv, script, ...argv];
-  if (process.env.ARTNET_RUN_ECHO) {
+  const defaultNodeArgv = ["--enable-source-maps"];
+
+  // Suppress "ExperimentalWarning" for features like node:sqlite that are stable enough for our use
+  const [major] = process.versions.node.split(".");
+  if (Number(major) >= 22) {
+    defaultNodeArgv.push("--disable-warning=ExperimentalWarning");
+  }
+
+  argv = [...defaultNodeArgv, ...nodeArgv, script, ...argv];
+  if (process.env.MATTER_RUN_ECHO) {
     const command = colors.whiteBright(`node ${argv.join(" ")}`);
-    process.stdout.write(`${colors.greenBright("ArtNet execute:")} ${command}\n`);
+    process.stdout.write(`${colors.greenBright("Matter execute:")} ${command}\n`);
   }
   const env = {} as NodeJS.ProcessEnv;
 
   // Hmm this is a little much as a default
-  // if (process.env.ARTNET_LOG_STACK_LIMIT === undefined) {
-  //     env.ARTNET_LOG_STACK_LIMIT = "100";
+  // if (process.env.MATTER_LOG_STACK_LIMIT === undefined) {
+  //     env.MATTER_LOG_STACK_LIMIT = "100";
   // }
 
   return execute("node", argv, env);

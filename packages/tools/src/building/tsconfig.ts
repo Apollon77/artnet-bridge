@@ -41,7 +41,7 @@ export async function syncPackageTsconfigs(graph: Graph, node: Graph.Node) {
     node,
     "test",
     node.pkg.resolve("src"),
-    graph.get("@artnet-bridge/tools").pkg.resolve("src"),
+    graph.get("@matter/tools").pkg.resolve("src"),
   );
 }
 

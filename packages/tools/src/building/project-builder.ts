@@ -42,7 +42,7 @@ export class ProjectBuilder {
     this.unconditional =
       options.clean ||
       (options.targets !== undefined && options.targets?.indexOf(Target.clean) !== -1);
-    this.tsgo = options.tsgo || (!!process.env.ARTNET_TSGO && process.env.ARTNET_TSGO !== "0");
+    this.tsgo = options.tsgo || (!!process.env.MATTER_TSGO && process.env.MATTER_TSGO !== "0");
   }
 
   get hasClean() {

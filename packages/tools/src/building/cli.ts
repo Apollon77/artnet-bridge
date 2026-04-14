@@ -7,6 +7,7 @@
 import { commander } from "../util/commander.js";
 import { Package } from "../util/package.js";
 import { reportCycles } from "./cycles.js";
+import { buildDocs, mergeDocs } from "./docs.js";
 import { Graph } from "./graph.js";
 import { ProjectBuilder, Target } from "./project-builder.js";
 import { Project } from "./project.js";
@@ -17,6 +18,7 @@ enum Mode {
   BuildProjectWithDependencies,
   BuildWorkspace,
   DisplayGraph,
+  BuildDocs,
   SyncTsconfigs,
   Circular,
 }
@@ -32,7 +34,7 @@ export async function main(argv = process.argv) {
   const targets = Array<Target>();
   let mode = Mode.BuildProject;
 
-  const program = commander("artnet-build", "Builds packages adhering to artnet-bridge standards.")
+  const program = commander("matter-build", "Builds packages adhering to matter.js standards.")
     .option("-p, --prefix <path>", "specify build directory", ".")
     .option("-c, --clean", "clean before build", false)
     .option("-d, --dependencies", "build dependencies", false)
@@ -83,6 +85,13 @@ export async function main(argv = process.argv) {
     .description("sync all tsconfigs with package.json")
     .action(() => {
       mode = Mode.SyncTsconfigs;
+    });
+
+  program
+    .command("docs")
+    .description("build workspace documentation")
+    .action(() => {
+      mode = Mode.BuildDocs;
     });
 
   program
@@ -145,6 +154,22 @@ export async function main(argv = process.argv) {
         await syncAllTsconfigs(graph);
       }
       break;
+
+    case Mode.BuildDocs: {
+      using progress = pkg.start("Documenting");
+      if (pkg.isWorkspace) {
+        const graph = await Graph.load();
+        for (const node of graph.nodes) {
+          if (node.pkg.isLibrary) {
+            await progress.run(node.pkg.name, () => buildDocs(node.pkg, progress));
+          }
+        }
+        await mergeDocs(Package.workspace);
+      } else {
+        await progress.run(pkg.name, () => buildDocs(pkg, progress));
+      }
+      break;
+    }
 
     case Mode.Circular: {
       using progress = pkg.start("Analyzing dependencies");

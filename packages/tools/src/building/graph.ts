@@ -181,14 +181,7 @@ export class Graph {
     const nodeMap = {} as Record<string, Graph.Node>;
     const allDeps = {} as Record<string, string[]>;
     for (const path of workspaces.values()) {
-      const resolvedPath = workspace.resolve(path);
-      const pkg = new Package({ path: resolvedPath });
-
-      // Skip workspace packages that don't have a src directory (e.g. not yet created)
-      if (!pkg.hasSrc) {
-        continue;
-      }
-
+      const pkg = new Package({ path: workspace.resolve(path) });
       allDeps[pkg.name] = pkg.dependencies;
       nodeMap[pkg.name] = {
         pkg,
@@ -257,5 +250,5 @@ function formatTime(time: number | string) {
 }
 
 function formatDep(node: Graph.Node) {
-  return node.pkg.name.replace(/^@artnet-bridge\//, "");
+  return node.pkg.name.replace(/^@matter\//, "");
 }

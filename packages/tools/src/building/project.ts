@@ -195,7 +195,15 @@ export class Project {
       },
     });
 
-    for (const entry of await this.#targetsOf(indir, outdir, "cjs", "mjs", "d.cts", "d.mts")) {
+    for (const entry of await this.#targetsOf(
+      indir,
+      outdir,
+      "d.ts",
+      "cjs",
+      "mjs",
+      "d.cts",
+      "d.mts",
+    )) {
       await cp(entry.in, entry.out);
     }
   }
