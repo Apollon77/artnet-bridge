@@ -4,10 +4,21 @@
     "type": "module",
     "description": "Philips Hue protocol adapter for ArtNet Bridge",
     "main": "dist/esm/index.js",
+    "exports": {
+        ".": {
+            "dev-types": {
+                "types": "./src/index.ts"
+            },
+            "import": {
+                "types": "./dist/esm/index.d.ts",
+                "default": "./dist/esm/index.js"
+            }
+        }
+    },
     "scripts": {
-        "clean": "artnet-build clean",
-        "build": "artnet-build",
-        "build-clean": "artnet-build --clean",
+        "clean": "nacho-build clean",
+        "build": "nacho-build",
+        "build-clean": "nacho-build --clean",
         "bundle": "node scripts/copy-web-assets.js"
     },
     "engines": {

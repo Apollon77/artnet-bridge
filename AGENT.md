@@ -124,7 +124,7 @@ packages/*/src/tsconfig.json             -- Extends tsconfig.lib.json, declares 
 
 - All packages use `"type": "module"`, `"main": "dist/esm/index.js"`
 - Workspace deps use `"*"` version
-- Build scripts: `artnet-build` (from tools package)
+- Build scripts: `nacho-build` (from tools package)
 
 ## Key design patterns
 

@@ -3,7 +3,6 @@
     "private": true,
     "type": "module",
     "workspaces": [
-        "packages/tools",
         "packages/artnet",
         "packages/protocol",
         "packages/protocol-hue",
@@ -21,10 +20,10 @@
     "license": "MIT",
     "scripts": {
         "prepare": "npm run build-clean",
-        "clean": "node packages/tools/bin/build.js clean",
-        "build-only": "node packages/tools/bin/build.js",
+        "clean": "nacho-build clean",
+        "build-only": "nacho-build",
         "build": "npm run build-only && npm run bundle --workspaces --if-present",
-        "version": "node packages/tools/bin/version.js",
+        "version": "nacho-version",
         "build-clean": "npm run clean && npm run build",
         "lint": "oxlint --type-aware",
         "lint-fix": "oxlint --fix --type-aware",
@@ -42,7 +41,8 @@
         "oxlint": "^1.60.0",
         "oxlint-tsgolint": "^0.20.0",
         "tsx": "^4.21.0",
-        "typescript": "~6.0.2"
+        "typescript": "~6.0.2",
+        "@nacho-iot/js-tools": "^0.1.3"
     },
     "engines": {
         "node": ">=22.13.0"

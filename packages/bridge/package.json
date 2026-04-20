@@ -8,9 +8,9 @@
         "artnet-bridge": "dist/esm/cli.js"
     },
     "scripts": {
-        "clean": "artnet-build clean",
-        "build": "artnet-build",
-        "build-clean": "artnet-build --clean",
+        "clean": "nacho-build clean",
+        "build": "nacho-build",
+        "build-clean": "nacho-build --clean",
         "bundle": "node scripts/copy-public.js"
     },
     "engines": {
