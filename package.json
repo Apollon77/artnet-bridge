@@ -39,7 +39,7 @@
         "mocha": "^11.7.5",
         "oxfmt": "^0.45.0",
         "oxlint": "^1.60.0",
-        "oxlint-tsgolint": "^0.20.0",
+        "oxlint-tsgolint": "^0.21.1",
         "tsx": "^4.21.0",
         "typescript": "~6.0.2",
         "@nacho-iot/js-tools": "^0.1.3"
