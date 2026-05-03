@@ -38,7 +38,7 @@
         "globals": "^17.5.0",
         "mocha": "^11.7.5",
         "oxfmt": "^0.45.0",
-        "oxlint": "^1.60.0",
+        "oxlint": "^1.62.0",
         "oxlint-tsgolint": "^0.21.1",
         "tsx": "^4.21.0",
         "typescript": "~6.0.2",
