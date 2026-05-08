@@ -42,7 +42,7 @@
         "oxlint-tsgolint": "^0.22.1",
         "tsx": "^4.21.0",
         "typescript": "~6.0.3",
-        "@nacho-iot/js-tools": "^0.1.5"
+        "@nacho-iot/js-tools": "^0.1.7"
     },
     "engines": {
         "node": ">=22.13.0"
