@@ -31,7 +31,7 @@
         "@artnet-bridge/protocol": "*",
         "@artnet-bridge/protocol-hue": "*",
         "express": "^5.2.1",
-        "ws": "^8.20.0"
+        "ws": "^8.21.0"
     },
     "devDependencies": {
         "@types/express": "^5.0.6",
