@@ -85,6 +85,16 @@ describe("Art-Net Packet Parsing", () => {
       assert.equal(buf[15], 0x7f); // Net (top 7 bits)
     });
 
+    it("should ignore the reserved top bit of the Net field", () => {
+      const buf = serializeDmxPacket(0x7fff, new Uint8Array(2));
+      buf[15] |= 0x80;
+
+      const pkt = parsePacket(buf);
+      assert.ok(pkt);
+      if (pkt.opcode !== OP_OUTPUT) return;
+      assert.equal(pkt.universe, 0x7fff);
+    });
+
     it("should pad odd-length data to even length", () => {
       const data = new Uint8Array(3);
       data[0] = 10;
@@ -236,6 +246,53 @@ describe("Art-Net Packet Parsing", () => {
       const buf = serializePollReplyPacket();
       const truncated = buf.subarray(0, 50);
       assert.equal(parsePacket(truncated), undefined);
+    });
+
+    it("should place Style, BindIndex and Status2 at the Art-Net 4 offsets", () => {
+      const buf = serializePollReplyPacket({ style: 0x01, status2: 0x08 });
+
+      assert.equal(buf[196], 0, "byte 196 is SwRemote and must stay zero");
+      assert.equal(buf[200], 0x01, "Style belongs at byte 200");
+      assert.equal(buf[211], 1, "BindIndex 1 identifies the root device");
+      assert.equal(buf[212], 0x08, "Status2 belongs at byte 212");
+    });
+
+    it("should roundtrip Style, BindIndex and Status2", () => {
+      const buf = serializePollReplyPacket({ style: 0x01, status2: 0x0c, bindIndex: 3 });
+
+      const pkt = parsePacket(buf);
+      assert.ok(pkt);
+      assert.equal(pkt.opcode, OP_POLL_REPLY);
+      if (pkt.opcode !== OP_POLL_REPLY) return;
+      assert.equal(pkt.style, 0x01);
+      assert.equal(pkt.bindIndex, 3);
+      assert.equal(pkt.status2, 0x0c);
+    });
+
+    it("should read only the fields a truncated PollReply actually contains", () => {
+      const buf = serializePollReplyPacket({ style: 0x01, status2: 0x08, bindIndex: 2 });
+
+      // 207 bytes = spec minimum: Style (200) present, BindIndex (211) and Status2 (212) absent
+      const atSpecMinimum = parsePacket(buf.subarray(0, 207));
+      assert.ok(atSpecMinimum);
+      assert.equal(atSpecMinimum.opcode, OP_POLL_REPLY);
+      if (atSpecMinimum.opcode !== OP_POLL_REPLY) return;
+      assert.equal(atSpecMinimum.style, 0x01);
+      assert.equal(atSpecMinimum.bindIndex, 0);
+      assert.equal(atSpecMinimum.status2, 0);
+
+      // 212 bytes: BindIndex present, Status2 still absent
+      const withBindIndex = parsePacket(buf.subarray(0, 212));
+      assert.ok(withBindIndex);
+      if (withBindIndex.opcode !== OP_POLL_REPLY) return;
+      assert.equal(withBindIndex.bindIndex, 2);
+      assert.equal(withBindIndex.status2, 0);
+
+      // 213 bytes: Status2 present
+      const withStatus2 = parsePacket(buf.subarray(0, 213));
+      assert.ok(withStatus2);
+      if (withStatus2.opcode !== OP_POLL_REPLY) return;
+      assert.equal(withStatus2.status2, 0x08);
     });
   });
 });

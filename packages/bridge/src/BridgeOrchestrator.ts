@@ -8,6 +8,7 @@ import type {
   DmxChannelMapping,
 } from "@artnet-bridge/protocol";
 import type { AppConfig, BridgeConfig } from "./config/ConfigSchema.js";
+import { ArtNetTrafficLogger } from "./ArtNetTrafficLogger.js";
 import { DmxMapper } from "./dmx/DmxMapper.js";
 import { RealtimeScheduler } from "./scheduler/RealtimeScheduler.js";
 import { LimitedScheduler } from "./scheduler/LimitedScheduler.js";
@@ -58,6 +59,7 @@ export class BridgeOrchestrator {
   private entityValues = new Map<string, { value: EntityValue; timestamp: number }>();
 
   private running = false;
+  private starting = false;
   private frameCount = 0;
   private frameCounts: Record<number, number> = {};
   private lastFrameTime?: number;
@@ -79,21 +81,58 @@ export class BridgeOrchestrator {
     this.handleDmx(universe, data);
   };
 
+  private readonly errorHandler = (err: Error): void => {
+    console.error("[ArtNet] Error:", err);
+  };
+
+  private readonly seenPollSources = new Set<string>();
+
+  private readonly pollHandler = (info: { address: string }): void => {
+    if (!this.seenPollSources.has(info.address)) {
+      this.seenPollSources.add(info.address);
+      console.log(`[ArtNet] Controller discovered: ${info.address}`);
+    }
+    this.lastPollTime = Date.now();
+    this.pollLostLogged = false;
+  };
+
   private readonly statsIntervalSec: number;
+  private readonly debugArtnet: boolean;
+  private trafficLogger?: ArtNetTrafficLogger;
 
   constructor(
     config: AppConfig,
     artnet: ArtNetReceiver,
     adapterFactories: Map<string, ProtocolAdapterFactory>,
-    options?: { statsIntervalSec?: number },
+    options?: { statsIntervalSec?: number; debugArtnet?: boolean },
   ) {
     this.config = config;
     this.artnet = artnet;
     this.adapterFactories = adapterFactories;
     this.statsIntervalSec = options?.statsIntervalSec ?? 10;
+    this.debugArtnet = options?.debugArtnet ?? false;
+    // Registered for the receiver's lifetime: an EventEmitter with no "error"
+    // listener throws instead of reporting
+    this.artnet.on("error", this.errorHandler);
   }
 
   async start(): Promise<void> {
+    if (this.running || this.starting) {
+      throw new Error("BridgeOrchestrator is already started");
+    }
+    this.starting = true;
+    try {
+      await this.startInternal();
+      this.running = true;
+    } catch (error) {
+      await this.stop();
+      throw error;
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  private async startInternal(): Promise<void> {
     // 1. Create and connect adapters
     for (const bridgeConfig of this.config.bridges) {
       const factory = this.adapterFactories.get(bridgeConfig.protocol);
@@ -127,25 +166,39 @@ export class BridgeOrchestrator {
     // 3. Build DmxMapper from config channel mappings + entities
     const mappings = this.buildMappings();
     this.dmxMapper = new DmxMapper(mappings);
+    if (mappings.length === 0) {
+      console.warn(
+        "[Bridge] No channel mappings configured — incoming DMX will be counted but not forwarded",
+      );
+    } else {
+      const mappedUniverses = [...new Set(mappings.map((m) => m.universe))].sort((a, b) => a - b);
+      console.log(
+        `[Bridge] ${mappings.length} channel mappings on universe(s) ${mappedUniverses.join(", ")}`,
+      );
+    }
 
     // 4. Create schedulers per bridge
     this.createSchedulers();
 
     // 5. Start ArtNet listener
     // Report configured universes in ArtPollReply so controllers see what we listen on
-    const universes = [...new Set(this.config.bridges.map((b) => b.universe))];
+    const universes = [...new Set(this.config.bridges.map((b) => b.universe))].sort(
+      (a, b) => a - b,
+    );
     this.artnet.setOutputUniverses(universes);
+    this.warnOnUnadvertisableUniverses(universes);
 
-    this.artnet.on("error", (err) => console.error("[ArtNet] Error:", err));
-    const seenPollSources = new Set<string>();
-    this.artnet.on("poll", (info: { address: string }) => {
-      if (!seenPollSources.has(info.address)) {
-        seenPollSources.add(info.address);
-        console.log(`[ArtNet] Controller discovered: ${info.address}`);
-      }
-      this.lastPollTime = Date.now();
-      this.pollLostLogged = false;
-    });
+    await this.artnet.start();
+    console.log(
+      `[ArtNet] Listening on ${this.config.artnet.bindAddress}:${this.config.artnet.port}`,
+    );
+
+    if (this.debugArtnet) {
+      this.trafficLogger = new ArtNetTrafficLogger(this.artnet, { configuredUniverses: universes });
+      this.trafficLogger.attach();
+    }
+
+    this.artnet.on("poll", this.pollHandler);
     this.pollWatchdog = setInterval(() => {
       if (this.lastPollTime > 0 && Date.now() - this.lastPollTime > 10000 && !this.pollLostLogged) {
         console.log("[ArtNet] No polls received for 10s \u2014 controller may have disconnected");
@@ -153,10 +206,6 @@ export class BridgeOrchestrator {
       }
     }, 5000);
     this.artnet.on("dmx", this.dmxHandler);
-    await this.artnet.start();
-    console.log(
-      `[ArtNet] Listening on ${this.config.artnet.bindAddress}:${this.config.artnet.port}`,
-    );
 
     // 6. Start all schedulers
     for (const scheduler of this.realtimeSchedulers.values()) scheduler.start();
@@ -193,8 +242,11 @@ export class BridgeOrchestrator {
       for (const scheduler of categoryMap.values()) scheduler.stop();
     }
 
-    // Remove listener and stop ArtNet
+    // Remove listeners and stop ArtNet
+    this.trafficLogger?.detach();
+    this.trafficLogger = undefined;
     this.artnet.off("dmx", this.dmxHandler);
+    this.artnet.off("poll", this.pollHandler);
     try {
       await this.artnet.stop();
     } catch (e) {
@@ -222,6 +274,7 @@ export class BridgeOrchestrator {
     this.entityValues.clear();
     this.universeBuffers.clear();
     this.seenUniverses.clear();
+    this.seenPollSources.clear();
   }
 
   getAdapters(): ProtocolAdapter[] {
@@ -299,6 +352,30 @@ export class BridgeOrchestrator {
     };
   }
 
+  /**
+   * A single ArtPollReply carries one Net/SubSwitch pair and 4 ports, so it can
+   * only advertise 4 universes from one block of 16. Anything else is silently
+   * misreported to controllers that route by discovery.
+   */
+  private warnOnUnadvertisableUniverses(universes: number[]): void {
+    if (universes.length > 4) {
+      console.warn(
+        `[ArtNet] ${universes.length} universes configured but ArtPollReply advertises at most 4 — ` +
+          `${universes.slice(4).join(", ")} are not announced`,
+      );
+    }
+    const advertised = universes.slice(0, 4);
+    const block = advertised.length > 0 ? advertised[0] >> 4 : 0;
+    const outside = advertised.filter((u) => u >> 4 !== block);
+    if (outside.length > 0) {
+      console.warn(
+        `[ArtNet] Universes ${outside.join(", ")} are outside the block of 16 starting at ` +
+          `${block * 16} — ArtPollReply announces them with the wrong Port-Address; ` +
+          `controllers that route by discovery may not send them`,
+      );
+    }
+  }
+
   private handleDmx(universe: number, data: Uint8Array): void {
     this.frameCount++;
     this.frameCounts[universe] = (this.frameCounts[universe] ?? 0) + 1;
@@ -309,7 +386,13 @@ export class BridgeOrchestrator {
     // Log first time we see a universe — including first few channel values for debugging
     if (!this.seenUniverses.has(universe)) {
       this.seenUniverses.add(universe);
-      console.log(`[ArtNet] First data on universe ${universe} (${data.length} bytes)`);
+      const configured = this.config.bridges.some((b) => b.universe === universe);
+      const suffix = configured
+        ? ""
+        : " — no bridge configured for this universe, data will be ignored";
+      console.log(
+        `[ArtNet] First data on universe ${universe} (${data.length} bytes)${suffix} [ch1-8: ${[...data.subarray(0, 8)].join(" ")}]`,
+      );
     }
 
     // Accumulate partial frames into a full 512-byte universe buffer

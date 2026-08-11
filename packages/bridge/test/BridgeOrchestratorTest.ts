@@ -503,6 +503,58 @@ describe("BridgeOrchestrator", () => {
     orchestrator = undefined;
   });
 
+  it("rejects a second start() instead of registering listeners twice", async () => {
+    const entity = makeEntity("light-1", "realtime", "realtime-light");
+    const mockBridge = makeMockProtocolBridge([entity], "bridge-1");
+    const mockAdapter = new MockAdapter([mockBridge]);
+
+    const port = getTestPort();
+    const config = makeConfig([
+      makeBridgeConfig("bridge-1", 0, [
+        { targetId: "light-1", targetType: "light", dmxStart: 1, channelMode: "8bit" },
+      ]),
+    ]);
+    config.artnet.port = port;
+
+    const factories = new Map<string, (bc: BridgeConfig) => ProtocolAdapter>();
+    factories.set("mock", () => mockAdapter);
+
+    const artnet = new ArtNetReceiver({ bindAddress: "127.0.0.1", port });
+    orchestrator = new BridgeOrchestrator(config, artnet, factories);
+    await orchestrator.start();
+
+    await assert.rejects(() => {
+      if (!orchestrator) throw new Error("orchestrator missing");
+      return orchestrator.start();
+    }, /BridgeOrchestrator is already started/);
+
+    // The running instance must survive the rejected start
+    assert.equal(artnet.listenerCount("dmx"), 1);
+    assert.equal(mockAdapter.connected, true);
+    assert.equal(orchestrator.getStatus().artnet.running, true);
+
+    await orchestrator.stop();
+    orchestrator = undefined;
+  });
+
+  it("reports socket errors after stop() instead of throwing", async () => {
+    const port = getTestPort();
+    const config = makeConfig([]);
+    config.artnet.port = port;
+
+    const factories = new Map<string, (bc: BridgeConfig) => ProtocolAdapter>();
+    const artnet = new ArtNetReceiver({ bindAddress: "127.0.0.1", port });
+    orchestrator = new BridgeOrchestrator(config, artnet, factories);
+
+    await orchestrator.start();
+    await orchestrator.stop();
+    orchestrator = undefined;
+
+    assert.doesNotThrow(() => {
+      artnet.emit("error", new Error("late socket failure"));
+    });
+  });
+
   it("handles ArtNet bind failure gracefully", async () => {
     const port = getTestPort();
     const config = makeConfig([]);

@@ -6,7 +6,12 @@ import { createSocket, type Socket } from "node:dgram";
 import { networkInterfaces } from "node:os";
 import { EventEmitter } from "node:events";
 import { ARTNET_PORT } from "./constants.js";
-import { type ArtNetPacket, parsePacket, serializePollReplyPacket } from "./packets.js";
+import {
+  type ArtNetPacket,
+  describeParseFailure,
+  parsePacket,
+  serializePollReplyPacket,
+} from "./packets.js";
 
 export interface ArtNetReceiverOptions {
   /** Address to bind to (default: "0.0.0.0") */
@@ -23,10 +28,23 @@ export interface ArtNetReceiverOptions {
   outputUniverses?: number[];
 }
 
+export interface SourceInfo {
+  address: string;
+  port: number;
+}
+
 export interface ArtNetReceiverEvents {
   dmx: [universe: number, data: Uint8Array];
-  poll: [info: { address: string; port: number }];
-  packet: [packet: ArtNetPacket, rinfo: { address: string; port: number }];
+  poll: [info: SourceInfo];
+  packet: [packet: ArtNetPacket, rinfo: SourceInfo];
+  /** A datagram that could not be parsed as a supported Art-Net packet. */
+  unparsed: [data: Buffer, rinfo: SourceInfo, reason: string];
+  /**
+   * An OpPollReply was sent in response to an OpPoll. `universes` are the
+   * Port-Addresses actually encoded in the reply, which can differ from the
+   * configured ones (see {@link ArtNetReceiver.setOutputUniverses}).
+   */
+  pollReply: [target: SourceInfo, universes: number[], broadcast: boolean];
   error: [error: Error];
 }
 
@@ -90,7 +108,14 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
     this.outputUniverses = options?.outputUniverses ?? [];
   }
 
-  /** Update the output universes reported in OpPollReply (can be called at runtime). */
+  /**
+   * Update the output universes reported in OpPollReply (can be called at runtime).
+   *
+   * Only the first 4 are reported, and because a single OpPollReply carries one
+   * Net/SubSwitch pair, universes outside the first universe's block of 16 are
+   * advertised with the wrong Port-Address. Use {@link ArtNetReceiver.pollReply}
+   * event's `universes` to see what a reply really claims.
+   */
   setOutputUniverses(universes: number[]): void {
     this.outputUniverses = universes.slice(0, 4); // ArtNet supports max 4 ports per node
   }
@@ -109,21 +134,34 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
     });
 
     socket.on("message", (msg, rinfo) => {
-      const packet = parsePacket(Buffer.from(msg));
-      if (!packet) return;
+      const buffer = Buffer.from(msg);
+      const source: SourceInfo = { address: rinfo.address, port: rinfo.port };
+      const packet = parsePacket(buffer);
+      if (!packet) {
+        if (this.listenerCount("unparsed") > 0) {
+          this.emit("unparsed", buffer, source, describeParseFailure(buffer));
+        }
+        return;
+      }
 
-      this.emit("packet", packet, { address: rinfo.address, port: rinfo.port });
+      this.emit("packet", packet, source);
 
       switch (packet.opcode) {
         case 0x5000:
           this.emit("dmx", packet.universe, packet.data);
           break;
         case 0x2000:
-          this.emit("poll", { address: rinfo.address, port: rinfo.port });
+          this.emit("poll", source);
           if (this.autoReplyToPoll && this.socket) {
             // Per Art-Net spec, PollReply is sent to the Art-Net port (6454),
             // broadcast on the local network (or unicast to the sender's IP on port 6454)
-            this.sendPollReply(rinfo.address, ARTNET_PORT);
+            const sent = this.sendPollReply(rinfo.address, ARTNET_PORT);
+            this.emit(
+              "pollReply",
+              { address: rinfo.address, port: ARTNET_PORT },
+              sent.advertisedUniverses,
+              sent.broadcast,
+            );
           }
           break;
       }
@@ -138,8 +176,15 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
     });
   }
 
-  /** Send an OpPollReply to the given address on the Art-Net port. */
-  private sendPollReply(address: string, port: number): void {
+  /**
+   * Send an OpPollReply to the given address on the Art-Net port.
+   * Returns the Port-Addresses the reply actually advertises plus whether the
+   * additional broadcast copy went out.
+   */
+  private sendPollReply(
+    address: string,
+    port: number,
+  ): { advertisedUniverses: number[]; broadcast: boolean } {
     const ipParts = getLocalIpAddress();
     const numPorts = Math.min(this.outputUniverses.length, 4);
 
@@ -151,12 +196,12 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
       numPorts > 3 ? 0x80 : 0,
     ];
 
-    // swOut: universe low byte per port
+    // swOut: bits 3-0 of the Port-Address per port (bits 7-4 live in SubSwitch)
     const swOut: readonly [number, number, number, number] = [
-      this.outputUniverses[0] !== undefined ? this.outputUniverses[0] & 0xff : 0,
-      this.outputUniverses[1] !== undefined ? this.outputUniverses[1] & 0xff : 0,
-      this.outputUniverses[2] !== undefined ? this.outputUniverses[2] & 0xff : 0,
-      this.outputUniverses[3] !== undefined ? this.outputUniverses[3] & 0xff : 0,
+      this.outputUniverses[0] !== undefined ? this.outputUniverses[0] & 0x0f : 0,
+      this.outputUniverses[1] !== undefined ? this.outputUniverses[1] & 0x0f : 0,
+      this.outputUniverses[2] !== undefined ? this.outputUniverses[2] & 0x0f : 0,
+      this.outputUniverses[3] !== undefined ? this.outputUniverses[3] & 0x0f : 0,
     ];
 
     // Net and subnet from the first universe (simplified — all ports share net/sub)
@@ -184,17 +229,25 @@ export class ArtNetReceiver extends (EventEmitter as new () => EventEmitter & Ty
       subSwitch,
       style: 0x00, // StNode
       status1: 0xd0, // Indicators normal, Port-Address programming authority = network
-      status2: 0x08, // supports Art-Net 3+, DHCP capable
+      status2: 0x08, // Status2 bit 3: supports 15-bit Port-Address (Art-Net 3/4)
     });
-    // Send unicast to the requester AND broadcast for other listeners
     this.socket?.send(reply, 0, reply.length, port, address);
-    // Also try broadcast so all controllers on the network see us
+
+    let broadcast = false;
     try {
       this.socket?.setBroadcast(true);
       this.socket?.send(reply, 0, reply.length, port, "255.255.255.255");
+      broadcast = true;
     } catch {
       // Broadcast may not be available on all interfaces
     }
+
+    const advertisedUniverses = new Array<number>();
+    for (let i = 0; i < numPorts; i++) {
+      advertisedUniverses.push((netSwitch << 8) | (subSwitch << 4) | swOut[i]);
+    }
+
+    return { advertisedUniverses, broadcast };
   }
 
   /** Close the UDP socket and stop receiving. */

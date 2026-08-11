@@ -129,6 +129,7 @@ artnet-bridge --config /path/to/config.json      # Custom config path
 artnet-bridge --port 9090                        # Custom web UI port
 artnet-bridge --no-web                           # Start without web UI
 artnet-bridge --stats-interval 5                 # Stats log every 5s (0=off)
+artnet-bridge --debug-artnet                     # Log every incoming Art-Net packet
 artnet-bridge config discover hue                # Find Hue bridges on network
 artnet-bridge config pair hue <host>             # Pair with a Hue bridge
 artnet-bridge config set <key> <value>           # Set a config value
@@ -163,6 +164,31 @@ Pre-built fixture definitions for [QLC+](https://www.qlcplus.org/) are included.
 - Check that entities have DMX addresses assigned (Channel Mapping)
 - Check the stats log for frame counts and dispatch activity
 - For entertainment lights: check DTLS connection status
+- If the stats log shows `0 frames`, start with `--debug-artnet` (see below) to find out whether packets arrive at all
+
+**Seeing what the console actually sends (`--debug-artnet`):**
+
+```bash
+artnet-bridge --debug-artnet     # or: ARTNET_DEBUG=1 artnet-bridge
+```
+
+Every incoming Art-Net packet is logged, including datagrams the parser rejects (which are otherwise dropped silently). Detail lines are throttled to one per second per source and universe, and a summary line per source is printed every 2 seconds:
+
+```
+[ArtNet:debug] Traffic logging enabled — configured universes: 0
+[ArtNet:debug] OpPoll from 192.168.40.2:52914 protocol version 14 flags 0x02 (reply-on-change)
+[ArtNet:debug] OpPollReply sent to 192.168.40.2:6454 and broadcast — advertising universes 0
+[ArtNet:debug] OpDmx from 192.168.40.2:6454 universe 0 seq 37 phys 0 512 channels [ch1-12: 255 128 64 0 0 0 0 0 0 0 0 0]
+[ArtNet:debug] 192.168.40.2: 88 packets (44/s) [OpDmx 88] universes 0
+[ArtNet:debug] No Art-Net traffic received in the last 2000ms
+```
+
+What to look for:
+
+- **`No Art-Net traffic received`** — nothing reaches the bridge: check the console's target IP/broadcast setting, the network interface, and any firewall on UDP port 6454
+- **`universe NOT configured`** on an `OpDmx` line — data arrives but on a universe no bridge is mapped to; fix the universe in the config
+- **`Dropped datagram … <reason>`** — the packet was malformed or uses an opcode this bridge does not handle (e.g. `OpSync`); the reason and the first bytes are printed
+- **`OpPollReply sent … advertising universes`** — what this bridge announces to the console during discovery
 
 **Entertainment streaming not working:**
 - Ensure an entertainment area is selected in the Hue Configuration page

@@ -55,6 +55,8 @@ export interface PollReplyOptions {
   swOut?: readonly [number, number, number, number];
   style?: number;
   macAddress?: readonly [number, number, number, number, number, number];
+  /** Order of bound devices; 0 or 1 means root device (default: 1) */
+  bindIndex?: number;
   status2?: number;
 }
 
@@ -79,6 +81,7 @@ export interface ArtPollReplyPacket {
   swOut: readonly [number, number, number, number];
   style: number;
   macAddress: readonly [number, number, number, number, number, number];
+  bindIndex: number;
   status2: number;
 }
 
@@ -116,7 +119,8 @@ function parseDmx(buf: Buffer): ArtDmxPacket | undefined {
   const sequence = buf[12];
   const physical = buf[13];
   const subUni = buf[14];
-  const net = buf[15];
+  // Net is bits 14-8 of the Port-Address; bit 15 is reserved and must be ignored
+  const net = buf[15] & 0x7f;
   const universe = (net << 8) | subUni;
   const dataLength = buf.readUInt16BE(16);
 
@@ -173,18 +177,17 @@ function parsePollReply(buf: Buffer): ArtPollReplyPacket | undefined {
   const goodOutputA = [buf[182], buf[183], buf[184], buf[185]] as const;
   const swIn = [buf[186], buf[187], buf[188], buf[189]] as const;
   const swOut = [buf[190], buf[191], buf[192], buf[193]] as const;
-  // bytes 194..196 = swVideo (deprecated), swMacro, swRemote
-  const style = buf[196];
+  // bytes 194..196 = acnPriority, swMacro, swRemote; 197..199 = spare
+  const style = buf.length >= 201 ? buf[200] : 0;
 
   let macAddress: readonly [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
   if (buf.length >= 207) {
     macAddress = [buf[201], buf[202], buf[203], buf[204], buf[205], buf[206]] as const;
   }
 
-  let status2 = 0;
-  if (buf.length >= 212) {
-    status2 = buf[211];
-  }
+  // bytes 207..210 = bindIp
+  const bindIndex = buf.length >= 212 ? buf[211] : 0;
+  const status2 = buf.length >= 213 ? buf[212] : 0;
 
   return {
     opcode: OP_POLL_REPLY,
@@ -207,6 +210,7 @@ function parsePollReply(buf: Buffer): ArtPollReplyPacket | undefined {
     swOut,
     style,
     macAddress,
+    bindIndex,
     status2,
   };
 }
@@ -234,6 +238,80 @@ export function parsePacket(buffer: Buffer): ArtNetPacket | undefined {
       return parsePollReply(buffer);
     default:
       return undefined;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------
+
+const OPCODE_NAMES = new Map<number, string>([
+  [0x2000, "OpPoll"],
+  [0x2100, "OpPollReply"],
+  [0x2300, "OpDiagData"],
+  [0x2400, "OpCommand"],
+  [0x2700, "OpDataRequest"],
+  [0x2800, "OpDataReply"],
+  [0x5000, "OpDmx"],
+  [0x5100, "OpNzs"],
+  [0x5200, "OpSync"],
+  [0x6000, "OpAddress"],
+  [0x7000, "OpInput"],
+  [0x8000, "OpTodRequest"],
+  [0x8100, "OpTodData"],
+  [0x8200, "OpTodControl"],
+  [0x8300, "OpRdm"],
+  [0x8400, "OpRdmSub"],
+  [0x9700, "OpTimeCode"],
+  [0x9800, "OpTimeSync"],
+  [0x9900, "OpTrigger"],
+  [0x9a00, "OpDirectory"],
+  [0x9b00, "OpDirectoryReply"],
+  [0xf200, "OpFirmwareMaster"],
+  [0xf300, "OpFirmwareReply"],
+  [0xf400, "OpFileTnMaster"],
+  [0xf500, "OpFileFnMaster"],
+  [0xf600, "OpFileFnReply"],
+  [0xf800, "OpIpProg"],
+  [0xf900, "OpIpProgReply"],
+]);
+
+/** Human-readable Art-Net opcode name, or the hex value for unknown opcodes. */
+export function opcodeName(opcode: number): string {
+  return OPCODE_NAMES.get(opcode) ?? `Op0x${opcode.toString(16).padStart(4, "0")}`;
+}
+
+/**
+ * Explain why {@link parsePacket} rejected a datagram. Only meaningful for
+ * buffers parsePacket returned undefined for — a valid packet yields a
+ * nonsense reason. Diagnostics only; the parser stays allocation-free.
+ */
+export function describeParseFailure(buffer: Buffer): string {
+  if (buffer.length < 10) return `datagram too short (${buffer.length} bytes)`;
+  if (!hasValidHeader(buffer)) {
+    const got = buffer.subarray(0, 8).toString("hex");
+    return `not an Art-Net packet (ID field 0x${got})`;
+  }
+
+  const opcode = buffer.readUInt16LE(8);
+  const name = opcodeName(opcode);
+
+  switch (opcode) {
+    case OP_OUTPUT: {
+      if (buffer.length < 18) return `${name}: truncated header (${buffer.length} bytes, need 18)`;
+      const dataLength = buffer.readUInt16BE(16);
+      if (dataLength < MIN_DMX_LENGTH || dataLength > MAX_DMX_LENGTH) {
+        return `${name}: length field ${dataLength} outside ${MIN_DMX_LENGTH}..${MAX_DMX_LENGTH}`;
+      }
+      if (dataLength % 2 !== 0) return `${name}: odd length field ${dataLength}`;
+      return `${name}: truncated data (${buffer.length - 18} of ${dataLength} bytes)`;
+    }
+    case OP_POLL:
+      return `${name}: truncated (${buffer.length} bytes, need 14)`;
+    case OP_POLL_REPLY:
+      return `${name}: truncated (${buffer.length} bytes, parser needs 197, spec mandates 207)`;
+    default:
+      return `${name}: opcode not handled`;
   }
 }
 
@@ -408,22 +486,24 @@ export function serializePollReplyPacket(options: PollReplyOptions = {}): Buffer
     for (let i = 0; i < 4; i++) buf[190 + i] = options.swOut[i];
   }
 
-  // Bytes 194-196: SwVideo (deprecated), SwMacro, SwRemote = 0
+  // Bytes 194-196: AcnPriority, SwMacro, SwRemote = 0
+  // Bytes 197-199: spare
 
-  // Field 22: Style
-  buf[196] = options.style ?? 0x00; // StNode
+  // Field 31: Style
+  buf[200] = options.style ?? 0x00; // StNode
 
-  // Field 23: MAC address (6 bytes at offset 201)
-  // Bytes 197-200: spare
+  // Fields 32-37: MAC address
   if (options.macAddress) {
     for (let i = 0; i < 6; i++) buf[201 + i] = options.macAddress[i];
   }
 
-  // Byte 207-210: BindIp = 0
-  // Byte 211: BindIndex = 0
+  // Field 38 (bytes 207-210): BindIp = 0
 
-  // Field: Status2
-  buf[211] = options.status2 ?? 0;
+  // Field 39: BindIndex — 1 identifies this as the root device
+  buf[211] = options.bindIndex ?? 1;
+
+  // Field 40: Status2
+  buf[212] = options.status2 ?? 0;
 
   return buf;
 }

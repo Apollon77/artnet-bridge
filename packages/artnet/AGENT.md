@@ -6,7 +6,7 @@
 |------|---------|
 | `src/constants.ts` | Protocol constants (header, opcodes, port 6454, version 14) |
 | `src/packets.ts` | Packet parser and serializers for OpOutput, OpPoll, OpPollReply |
-| `src/ArtNetReceiver.ts` | UDP listener, emits typed events (`dmx`, `poll`, `packet`, `error`) |
+| `src/ArtNetReceiver.ts` | UDP listener, emits typed events (`dmx`, `poll`, `packet`, `unparsed`, `pollReply`, `error`) |
 | `src/ArtNetSender.ts` | UDP sender for DMX packets and polls |
 
 ## Packet format
@@ -38,6 +38,21 @@ Discovery request. 14 bytes minimum. The receiver auto-replies with OpPollReply 
 ### OpPollReply -- 0x2100
 
 Node identity report. 239 bytes. Contains IP address, short/long name, port types, universe assignments, MAC address.
+
+Tail-end offsets are easy to get wrong (verified against `docs/art-net.pdf`, fields 24-41):
+
+| Offset | Field |
+|--------|-------|
+| 190-193 | SwOut[4] — **bits 3-0 of the Port-Address only**, low nibble (bits 7-4 live in SubSwitch) |
+| 194 | AcnPriority |
+| 195, 196 | SwMacro, SwRemote |
+| 197-199 | Spare |
+| 200 | Style |
+| 201-206 | MAC |
+| 207-210 | BindIp |
+| 211 | BindIndex (0 or 1 = root device) |
+| 212 | Status2 (bit 3 = supports 15-bit Port-Address, i.e. Art-Net 3/4) |
+| 213-216 | GoodOutputB[4] |
 
 **Important**: PollReply is sent to port 6454 (the Art-Net port), NOT to the sender's ephemeral port. The receiver also broadcasts for visibility.
 

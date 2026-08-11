@@ -82,6 +82,7 @@ Run the server from source:
 ```bash
 npm run server                              # Start the bridge
 npm run server -- --port 9090               # Custom web UI port
+npm run server -- --debug-artnet            # Log every incoming Art-Net packet
 npm run server -- config discover hue       # Discover bridges
 npm run server -- config pair hue <ip>      # Pair with a bridge
 ```

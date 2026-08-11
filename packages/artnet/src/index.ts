@@ -16,6 +16,7 @@ export {
   type ArtPollPacket,
   type ArtPollReplyPacket,
   type PollReplyOptions,
+  opcodeName,
   parsePacket,
   serializeDmxPacket,
   serializePollPacket,
@@ -26,5 +27,6 @@ export {
   ArtNetReceiver,
   type ArtNetReceiverEvents,
   type ArtNetReceiverOptions,
+  type SourceInfo,
 } from "./ArtNetReceiver.js";
 export { ArtNetSender, type ArtNetSenderOptions } from "./ArtNetSender.js";

@@ -16,6 +16,7 @@ export interface CliArgs {
   webPort?: number;
   noWeb: boolean;
   statsIntervalSec?: number;
+  debugArtnet: boolean;
   command?: string;
   commandArgs: string[];
 }
@@ -25,6 +26,7 @@ export function parseArgs(args: string[]): CliArgs {
   let webPort: number | undefined;
   let noWeb = false;
   let statsIntervalSec: number | undefined;
+  let debugArtnet = process.env.ARTNET_DEBUG === "1" || process.env.ARTNET_DEBUG === "true";
   let command: string | undefined;
   const commandArgs: string[] = [];
 
@@ -38,9 +40,15 @@ export function parseArgs(args: string[]): CliArgs {
       noWeb = true;
     } else if (arg === "--stats-interval" && args[i + 1]) {
       statsIntervalSec = parseInt(args[++i], 10);
+    } else if (arg === "--debug-artnet") {
+      debugArtnet = true;
     } else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
+    } else if (!command && arg.startsWith("-")) {
+      console.error(`Unknown option: ${arg}`);
+      console.error("Run with --help to see available options.");
+      process.exit(1);
     } else if (!command && !arg.startsWith("-")) {
       command = arg;
     } else if (command) {
@@ -48,7 +56,7 @@ export function parseArgs(args: string[]): CliArgs {
     }
   }
 
-  return { configPath, webPort, noWeb, statsIntervalSec, command, commandArgs };
+  return { configPath, webPort, noWeb, statsIntervalSec, debugArtnet, command, commandArgs };
 }
 
 function printHelp(): void {
@@ -70,6 +78,7 @@ Options:
   --port <number>            Web UI port (default: 8080)
   --no-web                   Disable web UI
   --stats-interval <seconds> Stats log interval (default: 10, 0 = disabled)
+  --debug-artnet             Log every incoming Art-Net packet (also: ARTNET_DEBUG=1)
   -h, --help                 Show this help
 
 Config set examples:
@@ -138,9 +147,10 @@ async function main(): Promise<void> {
   });
 
   // Create orchestrator
-  const statsOpts =
-    args.statsIntervalSec !== undefined ? { statsIntervalSec: args.statsIntervalSec } : undefined;
-  const orchestrator = new BridgeOrchestrator(config, artnet, adapterFactories, statsOpts);
+  const orchestrator = new BridgeOrchestrator(config, artnet, adapterFactories, {
+    ...(args.statsIntervalSec !== undefined ? { statsIntervalSec: args.statsIntervalSec } : {}),
+    debugArtnet: args.debugArtnet,
+  });
 
   const webPort = args.webPort ?? config.web.port;
   const webEnabled = !args.noWeb && config.web.enabled;

@@ -7,6 +7,7 @@ artnet-bridge                              # start with defaults
 artnet-bridge --config /path/config.json   # custom config file
 artnet-bridge --port 9090                  # custom web UI port
 artnet-bridge --no-web                     # headless mode (no web UI)
+artnet-bridge --debug-artnet               # log every incoming Art-Net packet
 ```
 
 When running from the monorepo:
@@ -24,7 +25,40 @@ npm run server -- --no-web
 | `--config <path>` | Path to config file | `~/.artnet-bridge/config.json` |
 | `--port <number>` | Web UI port (overrides config) | `8080` |
 | `--no-web` | Disable the web UI entirely | off |
+| `--stats-interval <seconds>` | Stats log interval, `0` disables it | `10` |
+| `--debug-artnet` | Log every incoming Art-Net packet (also `ARTNET_DEBUG=1`) | off |
 | `-h`, `--help` | Show help and exit | |
+
+Unknown flags are rejected with exit code 1.
+
+## Debugging Incoming Art-Net
+
+`--debug-artnet` logs every datagram the receiver sees, including ones the parser rejects (normally dropped silently). Detail lines are throttled to one per second per source and universe; a per-source summary is printed every 2 seconds, and an explicit line is printed when nothing arrived at all.
+
+```bash
+artnet-bridge --debug-artnet
+ARTNET_DEBUG=1 artnet-bridge          # same, via environment
+npm run server -- --debug-artnet      # from the monorepo
+```
+
+```
+[ArtNet:debug] Traffic logging enabled — configured universes: 0
+[ArtNet:debug] OpPoll from 192.168.40.2:52914 protocol version 14 flags 0x02 (reply-on-change)
+[ArtNet:debug] OpPollReply sent to 192.168.40.2:6454 and broadcast — advertising universes 0
+[ArtNet:debug] OpDmx from 192.168.40.2:6454 universe 0 seq 37 phys 0 512 channels [ch1-12: 255 128 64 0 0 0 0 0 0 0 0 0]
+[ArtNet:debug] 192.168.40.2: 88 packets (44/s) [OpDmx 88] universes 0
+[ArtNet:debug] No Art-Net traffic received in the last 2000ms
+```
+
+| Line | Meaning |
+|------|---------|
+| `No Art-Net traffic received` | Nothing reaches the bridge — check the console's target address, the network interface, and UDP port 6454 |
+| `universe NOT configured` | DMX arrives on a universe no bridge is mapped to |
+| `Dropped datagram … <reason>` | Malformed packet or an opcode this bridge does not handle; reason plus the first bytes are printed |
+| `OpPollReply sent … advertising universes` | What this bridge announces during discovery |
+| `OpPollReply from …` | Another Art-Net node on the network announced itself |
+
+Independent of this flag, the bridge warns at startup when no channel mappings are configured, and logs the first DMX frame per universe with its first 8 channel values.
 
 ## Config Subcommands
 
