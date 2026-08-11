@@ -23,7 +23,7 @@
         "clean": "nacho-build clean",
         "build-only": "nacho-build",
         "build": "npm run build-only && npm run bundle --workspaces --if-present",
-        "version": "nacho-version",
+        "version": "nacho-build version",
         "build-clean": "npm run clean && npm run build",
         "lint": "oxlint --type-aware",
         "lint-fix": "oxlint --fix --type-aware",
