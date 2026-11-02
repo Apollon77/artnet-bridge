@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict";
-import { parseArgs, coerceValue, setByPath, getByPath } from "../../src/cli.js";
+import { parseArgs, coerceValue, setByPath, getByPath } from "../../src/cliArgs.js";
 
 describe("parseArgs", () => {
   it("returns defaults when no arguments provided", () => {

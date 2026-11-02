@@ -6,7 +6,8 @@ This is the main application package. It contains the orchestrator, schedulers, 
 
 | File | Purpose |
 |------|---------|
-| `src/cli.ts` | CLI entry point, argument parsing, adapter factory registration, config subcommands |
+| `src/cli.ts` | CLI entry point (runs `main()` on import, so never import it from tests), adapter factory registration, config subcommands |
+| `src/cliArgs.ts` | Side-effect-free argument parsing and dot-notation config helpers |
 | `src/BridgeOrchestrator.ts` | Core orchestration: connects adapters, builds mappings, creates schedulers, handles DMX frames |
 | `src/dmx/DmxMapper.ts` | Extracts entity values from DMX frames based on channel mappings |
 | `src/scheduler/RealtimeScheduler.ts` | Dirty-set batching for entertainment streaming |
