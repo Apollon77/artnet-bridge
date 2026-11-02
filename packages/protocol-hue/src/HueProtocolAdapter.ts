@@ -201,6 +201,22 @@ function lightHasColor(light: HueLight | undefined): boolean {
   return light?.color !== undefined;
 }
 
+/**
+ * Lights belonging to a room or zone. CLIP v2 rooms list their members as `device`
+ * children, zones as `light` children, so both references are resolved.
+ */
+function groupMemberLights(group: HueRoom | HueZone, lights: HueLight[]): HueLight[] {
+  const lightIds = new Set<string>();
+  const deviceIds = new Set<string>();
+  for (const child of group.children) {
+    if (child.rtype === "light") lightIds.add(child.rid);
+    else if (child.rtype === "device") deviceIds.add(child.rid);
+  }
+  return lights.filter(
+    (l) => lightIds.has(l.id) || (l.owner !== undefined && deviceIds.has(l.owner.rid)),
+  );
+}
+
 function isNetworkError(message: string): boolean {
   return NETWORK_ERROR_CODES.some((code) => message.includes(code));
 }
@@ -929,11 +945,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         return;
       }
 
-      // Check if any light in the group supports color
-      const groupLightIds = group.children.filter((c) => c.rtype === "light").map((c) => c.rid);
-      const hasAnyColorLight = groupLightIds.some((lid) =>
-        lights.some((l) => l.id === lid && lightHasColor(l)),
-      );
+      const hasAnyColorLight = groupMemberLights(group, lights).some(lightHasColor);
       const layout: ChannelLayout = hasAnyColorLight ? { type: "rgb" } : { type: "brightness" };
 
       entities.push({

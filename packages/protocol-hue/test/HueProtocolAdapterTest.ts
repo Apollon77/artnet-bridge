@@ -18,8 +18,20 @@ import type { HueAdapterConfig } from "../src/HueProtocolAdapter.js";
 // ---------------------------------------------------------------------------
 
 const LIGHTS: HueLight[] = [
-  { id: "light-1", metadata: { name: "Desk lamp" }, type: "light", color: { gamut_type: "C" } },
-  { id: "light-2", metadata: { name: "Ceiling" }, type: "light", color: { gamut_type: "C" } },
+  {
+    id: "light-1",
+    metadata: { name: "Desk lamp" },
+    type: "light",
+    color: { gamut_type: "C" },
+    owner: { rid: "device-1", rtype: "device" },
+  },
+  {
+    id: "light-2",
+    metadata: { name: "Ceiling" },
+    type: "light",
+    color: { gamut_type: "C" },
+    owner: { rid: "device-2", rtype: "device" },
+  },
   { id: "light-3", metadata: { name: "Floor lamp" }, type: "light", color: { gamut_type: "C" } },
   { id: "light-4", metadata: { name: "TV Backlight" }, type: "light", color: { gamut_type: "C" } },
 ];
@@ -30,8 +42,8 @@ const ROOMS: HueRoom[] = [
     metadata: { name: "Living room" },
     type: "room",
     children: [
-      { rid: "light-1", rtype: "light" },
-      { rid: "light-2", rtype: "light" },
+      { rid: "device-1", rtype: "device" },
+      { rid: "device-2", rtype: "device" },
     ],
     services: [{ rid: "gl-1", rtype: "grouped_light" }],
   },
@@ -268,9 +280,73 @@ describe("HueProtocolAdapter", () => {
       const bridges = await adapter.getBridges();
       const groupEntities = bridges[0].entities.filter((e) => e.category === "group");
       assert.equal(groupEntities.length, 2); // 1 room + 1 zone
-      assert.equal(groupEntities[0].controlMode, "limited");
-      // Groups with color-capable lights get rgb layout
-      assert.deepEqual(groupEntities[0].channelLayout, { type: "rgb" });
+      for (const entity of groupEntities) {
+        assert.equal(entity.controlMode, "limited");
+        assert.deepEqual(entity.channelLayout, { type: "rgb" });
+      }
+    });
+
+    it("should derive room layout from the lights of its device children", async () => {
+      const lights: HueLight[] = [
+        {
+          id: "light-color",
+          metadata: { name: "Color bulb" },
+          type: "light",
+          color: { gamut_type: "C" },
+          owner: { rid: "device-color", rtype: "device" },
+        },
+        {
+          id: "light-white",
+          metadata: { name: "White bulb" },
+          type: "light",
+          owner: { rid: "device-white", rtype: "device" },
+        },
+        {
+          id: "light-multi-white",
+          metadata: { name: "Multi white" },
+          type: "light",
+          owner: { rid: "device-multi", rtype: "device" },
+        },
+        {
+          id: "light-multi-color",
+          metadata: { name: "Multi color" },
+          type: "light",
+          color: { gamut_type: "C" },
+          owner: { rid: "device-multi", rtype: "device" },
+        },
+      ];
+      const room = (id: string, deviceId: string, glId: string): HueRoom => ({
+        id,
+        metadata: { name: id },
+        type: "room",
+        children: [{ rid: deviceId, rtype: "device" }],
+        services: [{ rid: glId, rtype: "grouped_light" }],
+      });
+      const { adapter } = buildAdapter({
+        clientOverrides: {
+          lights,
+          rooms: [
+            room("room-color", "device-color", "gl-color"),
+            room("room-white", "device-white", "gl-white"),
+            room("room-multi", "device-multi", "gl-multi"),
+          ],
+          zones: [],
+          groupedLights: [
+            { id: "gl-color", owner: { rid: "room-color", rtype: "room" }, type: "grouped_light" },
+            { id: "gl-white", owner: { rid: "room-white", rtype: "room" }, type: "grouped_light" },
+            { id: "gl-multi", owner: { rid: "room-multi", rtype: "room" }, type: "grouped_light" },
+          ],
+          scenes: [],
+          entertainmentConfigs: [],
+        },
+      });
+      await adapter.connect();
+
+      const bridges = await adapter.getBridges();
+      const layoutOf = (id: string) => bridges[0].entities.find((e) => e.id === id)?.channelLayout;
+      assert.deepEqual(layoutOf("gl-color"), { type: "rgb" });
+      assert.deepEqual(layoutOf("gl-white"), { type: "brightness" });
+      assert.deepEqual(layoutOf("gl-multi"), { type: "rgb" });
     });
 
     it("should include scene selector entities for groups with scenes", async () => {
