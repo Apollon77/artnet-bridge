@@ -303,7 +303,7 @@ function openDetail(bridgeId, detailDiv, toggleBtn) {
             payload.entityIds = entityIds;
           }
           await api("POST", "/api/bridges/" + encodeURIComponent(bridgeId) + "/test", payload);
-          toast(testStatusEl, "ok", "Sent (" + r + ", " + g + ", " + b + ") to " + (entityIds.length || "all") + " entities");
+          toast(testStatusEl, "ok", "Sent (" + r + ", " + g + ", " + b + ") to " + (entityIds.length || "all color") + " entities");
         } catch (e) {
           toast(testStatusEl, "err", e.message);
         }
@@ -359,10 +359,9 @@ async function loadEntities(bridgeId) {
 /** Track which entity checkboxes are checked for test controls */
 const testSelections = new Map();
 
-function isTestableEntity(entity) {
-  var cat = entity.category || "";
+function isSelectedForTestByDefault(entity) {
   var mode = entity.channelLayout?.type || "";
-  return cat !== "scene-selector" && mode !== "scene-selector";
+  return mode === "rgb" || mode === "rgb-dimmable";
 }
 
 function getCheckedEntityIds(bridgeId) {
@@ -403,6 +402,7 @@ function renderEntities(bridgeId, entities, liveData) {
 
   // If no mapped entities, show a prompt instead of an empty table
   if (mapped.length === 0) {
+    testSelections.delete(bridgeId);
     var hint = el("div", "muted");
     hint.style.marginBottom = "8px";
     hint.textContent = "No entities mapped to DMX channels yet. Click the \"Channel Mapping\" button above to assign DMX addresses.";
@@ -419,7 +419,7 @@ function renderEntities(bridgeId, entities, liveData) {
   if (!testSelections.has(bridgeId)) {
     var sel = new Map();
     for (var i = 0; i < mapped.length; i++) {
-      sel.set(mapped[i].id, isTestableEntity(mapped[i]));
+      sel.set(mapped[i].id, isSelectedForTestByDefault(mapped[i]));
     }
     testSelections.set(bridgeId, sel);
   } else {
@@ -428,7 +428,7 @@ function renderEntities(bridgeId, entities, liveData) {
     var mappedIds = new Set(mapped.map(function (e) { return e.id; }));
     sel.forEach(function (_v, eid) { if (!mappedIds.has(eid)) sel.delete(eid); });
     for (var i = 0; i < mapped.length; i++) {
-      if (!sel.has(mapped[i].id)) sel.set(mapped[i].id, isTestableEntity(mapped[i]));
+      if (!sel.has(mapped[i].id)) sel.set(mapped[i].id, isSelectedForTestByDefault(mapped[i]));
     }
   }
   var selections = testSelections.get(bridgeId);
@@ -452,7 +452,7 @@ function renderEntities(bridgeId, entities, liveData) {
     const tdCheck = document.createElement("td");
     const cb = document.createElement("input");
     cb.type = "checkbox";
-    cb.checked = selections.get(e.id) ?? isTestableEntity(e);
+    cb.checked = selections.get(e.id) ?? isSelectedForTestByDefault(e);
     cb.addEventListener("change", (function (eid) {
       return function () {
         selections.set(eid, this.checked);

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { computeDmxEnd } from "@artnet-bridge/protocol";
-import type { ProtocolAdapter, ProtocolBridge } from "@artnet-bridge/protocol";
+import type { Entity, ProtocolAdapter, ProtocolBridge } from "@artnet-bridge/protocol";
 import type { ConfigManager } from "../../config/ConfigManager.js";
 import type { BridgeConfig } from "../../config/ConfigSchema.js";
 
@@ -148,7 +148,7 @@ export function createBridgeRoutes(
       // Filter to selected entities if provided
       const selectedEntities = entityIds
         ? bridge.entities.filter((e) => entityIds.includes(e.id))
-        : bridge.entities;
+        : bridge.entities.filter(hasColorLayout);
 
       // Try realtime entities first, then limited
       const realtimeEntities = selectedEntities.filter((e) => e.controlMode === "realtime");
@@ -178,7 +178,7 @@ export function createBridgeRoutes(
       }
 
       if (promises.length === 0) {
-        res.status(400).json({ error: "No controllable light entities on this bridge" });
+        res.status(400).json({ error: "No testable entities: select a light or group" });
         return;
       }
 
@@ -254,6 +254,15 @@ function hasStringArray<K extends string>(
   if (!(key in obj)) return false;
   const val = (obj as Record<string, unknown>)[key];
   return Array.isArray(val) && val.every((v) => typeof v === "string");
+}
+
+/**
+ * Selects the targets of a test without an explicit selection. Entities without color are left
+ * out because a Hue smart plug may switch a mains load.
+ */
+function hasColorLayout(entity: Entity): boolean {
+  const { type } = entity.channelLayout;
+  return type === "rgb" || type === "rgb-dimmable";
 }
 
 function hasColorArray(obj: object): obj is { color: [number, number, number] } {

@@ -105,7 +105,7 @@ Open `http://localhost:8080` in your browser:
 | `8bit-dimmable` | 4 (Dim, R, G, B) | RGB with master dimmer (recommended for color lights) |
 | `8bit` | 3 (R, G, B) | Standard RGB, each 0-255 |
 | `16bit` | 6 (R coarse, R fine, G coarse, G fine, B coarse, B fine) | High-resolution RGB |
-| `brightness` | 1 | Brightness control for white-only lights or groups, 0-255 |
+| `brightness` | 1 | Brightness control for white-only lights or groups, 0-255. On/off devices such as Hue smart plugs: 0 = off, 1-255 = on |
 | `scene-selector` | 1 | Scene activation: 0 = none, 1-255 = scene index |
 
 ## Hue Rate Limits

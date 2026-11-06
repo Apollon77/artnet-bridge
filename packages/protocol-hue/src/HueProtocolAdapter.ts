@@ -196,9 +196,46 @@ const NETWORK_ERROR_CODES = [
   "ENOTFOUND",
 ];
 
+function isNetworkError(message: string): boolean {
+  return NETWORK_ERROR_CODES.some((code) => message.includes(code));
+}
+
+// ---------------------------------------------------------------------------
+// Light capability and state helpers
+// ---------------------------------------------------------------------------
+
 /** Check if a Hue light supports color (has a color gamut). */
 function lightHasColor(light: HueLight | undefined): boolean {
   return light?.color !== undefined;
+}
+
+function lightHasDimming(light: HueLight): boolean {
+  return light.dimming !== undefined;
+}
+
+/** Requested light state, independent of what the receiving light or group supports. */
+type LightTarget = { on: false } | { on: true; brightness: number; xy?: { x: number; y: number } };
+
+function toLightTarget(value: EntityValue): LightTarget | undefined {
+  switch (value.type) {
+    case "rgb": {
+      if (value.r === 0 && value.g === 0 && value.b === 0) return { on: false };
+      const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
+      return { on: true, brightness: bri, xy: { x, y } };
+    }
+    case "rgb-dimmable": {
+      if (value.dim === 0 || (value.r === 0 && value.g === 0 && value.b === 0)) {
+        return { on: false };
+      }
+      const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
+      return { on: true, brightness: (value.dim / 65535) * 100, xy: { x, y } };
+    }
+    case "brightness":
+      if (value.value === 0) return { on: false };
+      return { on: true, brightness: (value.value / 65535) * 100 };
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -215,10 +252,6 @@ function groupMemberLights(group: HueRoom | HueZone, lights: HueLight[]): HueLig
   return lights.filter(
     (l) => lightIds.has(l.id) || (l.owner !== undefined && deviceIds.has(l.owner.rid)),
   );
-}
-
-function isNetworkError(message: string): boolean {
-  return NETWORK_ERROR_CODES.some((code) => message.includes(code));
 }
 
 // ---------------------------------------------------------------------------
@@ -597,13 +630,13 @@ export class HueProtocolAdapter implements ProtocolAdapter {
     try {
       switch (entity.category) {
         case "light": {
-          await this.applyColorState((id, s) => state.client.setLightState(id, s), entityId, value);
+          await this.applyColorState((id, s) => state.client.setLightState(id, s), entity, value);
           break;
         }
         case "group": {
           await this.applyColorState(
             (id, s) => state.client.setGroupedLightState(id, s),
-            entityId,
+            entity,
             value,
           );
           break;
@@ -690,49 +723,34 @@ export class HueProtocolAdapter implements ProtocolAdapter {
   // Private — color state dispatch
   // -----------------------------------------------------------------------
 
+  /**
+   * Sends the value as a CLIP v2 state update with only the fields the entity metadata reports as
+   * supported, because the bridge returns an error for `dimming` on a smart plug. A target without
+   * `color` and `dimming` receives on/off only.
+   */
   private async applyColorState(
     setter: (id: string, state: Record<string, unknown>) => Promise<void>,
-    entityId: string,
+    entity: Entity,
     value: EntityValue,
   ): Promise<void> {
-    if (value.type === "rgb") {
-      const isOff = value.r === 0 && value.g === 0 && value.b === 0;
-      if (isOff) {
-        await setter(entityId, { on: { on: false } });
-      } else {
-        const { x, y, bri } = rgb16ToXyBrightness(value.r, value.g, value.b);
-        await setter(entityId, {
-          on: { on: true },
-          color: { xy: { x, y } },
-          dimming: { brightness: Math.max(bri, 1) },
-        });
-      }
-    } else if (value.type === "rgb-dimmable") {
-      const isOff = value.dim === 0 || (value.r === 0 && value.g === 0 && value.b === 0);
-      if (isOff) {
-        await setter(entityId, { on: { on: false } });
-      } else {
-        const { x, y } = rgb16ToXyBrightness(value.r, value.g, value.b);
-        const brightness = (value.dim / 65535) * 100;
-        await setter(entityId, {
-          on: { on: true },
-          color: { xy: { x, y } },
-          dimming: { brightness: Math.max(brightness, 1) },
-        });
-      }
-    } else if (value.type === "brightness") {
-      if (value.value === 0) {
-        await setter(entityId, { on: { on: false } });
-      } else {
-        const brightness = (value.value / 65535) * 100;
-        await setter(entityId, {
-          on: { on: true },
-          dimming: { brightness: Math.max(brightness, 1) },
-        });
-      }
-    } else {
-      console.warn(`[Hue] Unhandled value type "${value.type}" for entity ${entityId}`);
+    const target = toLightTarget(value);
+    if (target === undefined) {
+      console.warn(`[Hue] Unhandled value type "${value.type}" for entity ${entity.id}`);
+      return;
     }
+    if (!target.on) {
+      await setter(entity.id, { on: { on: false } });
+      return;
+    }
+
+    const clipState: Record<string, unknown> = { on: { on: true } };
+    if (target.xy !== undefined && entity.metadata.hasColor === true) {
+      clipState.color = { xy: target.xy };
+    }
+    if (entity.metadata.hasDimming === true) {
+      clipState.dimming = { brightness: Math.max(target.brightness, 1) };
+    }
+    await setter(entity.id, clipState);
   }
 
   // -----------------------------------------------------------------------
@@ -903,7 +921,7 @@ export class HueProtocolAdapter implements ProtocolAdapter {
               type: "light",
               bridgeId,
               channelId: channel.channel_id,
-              hasColor: light?.color !== undefined,
+              hasColor: lightHasColor(light),
             },
             controlMode: "realtime",
             category: "realtime-light",
@@ -926,7 +944,8 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           name: light.metadata.name,
           type: "light",
           bridgeId,
-          hasColor: light.color !== undefined,
+          hasColor: lightHasColor(light),
+          hasDimming: lightHasDimming(light),
         },
         controlMode: "limited",
         category: "light",
@@ -945,7 +964,8 @@ export class HueProtocolAdapter implements ProtocolAdapter {
         return;
       }
 
-      const hasAnyColorLight = groupMemberLights(group, lights).some(lightHasColor);
+      const memberLights = groupMemberLights(group, lights);
+      const hasAnyColorLight = memberLights.some(lightHasColor);
       const layout: ChannelLayout = hasAnyColorLight ? { type: "rgb" } : { type: "brightness" };
 
       entities.push({
@@ -955,6 +975,8 @@ export class HueProtocolAdapter implements ProtocolAdapter {
           type: groupType,
           bridgeId,
           groupId: group.id,
+          hasColor: hasAnyColorLight,
+          hasDimming: memberLights.some(lightHasDimming),
         },
         controlMode: "limited",
         category: "group",

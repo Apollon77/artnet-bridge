@@ -23,7 +23,7 @@ Click a bridge to expand its detail panel. This shows:
 - Per-entity status: current RGB/state, last update timestamp, control mode badge ("realtime" or "limited")
 - Rate limit budget usage per category (e.g., "lights: 8/10 req/s used")
 - DTLS streaming stats for realtime bridges (packets sent, connection state)
-- Debug test controls: solid color buttons to send values directly (bypasses ArtNet, useful for testing)
+- Debug test controls: solid color buttons to send values directly (bypasses ArtNet, useful for testing). Only color entities are selected by default; entities without color, such as smart plugs, must be ticked explicitly
 
 Detail panels are loaded on demand. Entity data is only pushed to the client for bridges with an active subscription.
 

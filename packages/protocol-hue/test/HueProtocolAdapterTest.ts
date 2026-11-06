@@ -1,5 +1,10 @@
 import * as assert from "node:assert/strict";
-import type { DiscoveredBridge, PairingResult, EntityUpdate } from "@artnet-bridge/protocol";
+import type {
+  DiscoveredBridge,
+  PairingResult,
+  EntityUpdate,
+  EntityValue,
+} from "@artnet-bridge/protocol";
 import type {
   HueClipClient,
   HueLight,
@@ -23,6 +28,7 @@ const LIGHTS: HueLight[] = [
     metadata: { name: "Desk lamp" },
     type: "light",
     color: { gamut_type: "C" },
+    dimming: { brightness: 100 },
     owner: { rid: "device-1", rtype: "device" },
   },
   {
@@ -30,10 +36,23 @@ const LIGHTS: HueLight[] = [
     metadata: { name: "Ceiling" },
     type: "light",
     color: { gamut_type: "C" },
+    dimming: { brightness: 100 },
     owner: { rid: "device-2", rtype: "device" },
   },
-  { id: "light-3", metadata: { name: "Floor lamp" }, type: "light", color: { gamut_type: "C" } },
-  { id: "light-4", metadata: { name: "TV Backlight" }, type: "light", color: { gamut_type: "C" } },
+  {
+    id: "light-3",
+    metadata: { name: "Floor lamp" },
+    type: "light",
+    color: { gamut_type: "C" },
+    dimming: { brightness: 100 },
+  },
+  {
+    id: "light-4",
+    metadata: { name: "TV Backlight" },
+    type: "light",
+    color: { gamut_type: "C" },
+    dimming: { brightness: 100 },
+  },
 ];
 
 const ROOMS: HueRoom[] = [
@@ -548,6 +567,221 @@ describe("HueProtocolAdapter", () => {
       assert.equal(clientCalls.setGroupedLightState[0].id, "gl-1");
       const state = clientCalls.setGroupedLightState[0].state;
       assert.ok("dimming" in state);
+    });
+
+    describe("state payload for a color light", () => {
+      const redXy = {
+        x: 0.4124564 / (0.4124564 + 0.2126729 + 0.0193339),
+        y: 0.2126729 / (0.4124564 + 0.2126729 + 0.0193339),
+      };
+
+      async function sendToLight(value: EntityValue) {
+        const clientCalls = freshClientCalls();
+        const { adapter } = buildAdapter({ clientCalls });
+        await adapter.connect();
+        await adapter.handleLimitedUpdate("bridge-1", "light-1", value);
+        return clientCalls.setLightState;
+      }
+
+      it("should derive brightness from luminance for rgb values", async () => {
+        assert.deepEqual(await sendToLight({ type: "rgb", r: 65535, g: 0, b: 0 }), [
+          {
+            id: "light-1",
+            state: {
+              on: { on: true },
+              color: { xy: redXy },
+              dimming: { brightness: 0.2126729 * 100 },
+            },
+          },
+        ]);
+      });
+
+      it("should take brightness from the dimmer for rgb-dimmable values", async () => {
+        const value = { type: "rgb-dimmable", dim: 32768, r: 65535, g: 0, b: 0 } as const;
+        assert.deepEqual(await sendToLight(value), [
+          {
+            id: "light-1",
+            state: {
+              on: { on: true },
+              color: { xy: redXy },
+              dimming: { brightness: (32768 / 65535) * 100 },
+            },
+          },
+        ]);
+      });
+
+      it("should not send a brightness below 1 while on", async () => {
+        assert.deepEqual(await sendToLight({ type: "brightness", value: 1 }), [
+          { id: "light-1", state: { on: { on: true }, dimming: { brightness: 1 } } },
+        ]);
+      });
+
+      for (const [name, value] of [
+        ["all-zero rgb", { type: "rgb", r: 0, g: 0, b: 0 }],
+        ["zero dimmer", { type: "rgb-dimmable", dim: 0, r: 65535, g: 0, b: 0 }],
+        ["all-zero rgb with dimmer", { type: "rgb-dimmable", dim: 65535, r: 0, g: 0, b: 0 }],
+        ["zero brightness", { type: "brightness", value: 0 }],
+      ] satisfies Array<[string, EntityValue]>) {
+        it(`should switch off for ${name}`, async () => {
+          assert.deepEqual(await sendToLight(value), [
+            { id: "light-1", state: { on: { on: false } } },
+          ]);
+        });
+      }
+    });
+
+    it("should send color to a group with a color light", async () => {
+      const clientCalls = freshClientCalls();
+      const { adapter } = buildAdapter({ clientCalls });
+      await adapter.connect();
+
+      await adapter.handleLimitedUpdate("bridge-1", "gl-1", { type: "rgb", r: 65535, g: 0, b: 0 });
+
+      assert.equal(clientCalls.setGroupedLightState.length, 1);
+      assert.deepEqual(Object.keys(clientCalls.setGroupedLightState[0].state).sort(), [
+        "color",
+        "dimming",
+        "on",
+      ]);
+    });
+
+    describe("lights with limited capabilities", () => {
+      const plug: HueLight = {
+        id: "plug",
+        metadata: { name: "Smart plug" },
+        type: "light",
+        owner: { rid: "device-plug", rtype: "device" },
+      };
+      const whiteBulb: HueLight = {
+        id: "white-bulb",
+        metadata: { name: "White bulb" },
+        type: "light",
+        dimming: { brightness: 100 },
+        owner: { rid: "device-white", rtype: "device" },
+      };
+      const room = (id: string, deviceIds: string[], glId: string): HueRoom => ({
+        id,
+        metadata: { name: id },
+        type: "room",
+        children: deviceIds.map((rid) => ({ rid, rtype: "device" })),
+        services: [{ rid: glId, rtype: "grouped_light" }],
+      });
+
+      async function connectAdapter(clientCalls: MockClientCalls) {
+        const { adapter } = buildAdapter({
+          clientCalls,
+          clientOverrides: {
+            lights: [plug, whiteBulb],
+            rooms: [
+              room("room-plugs", ["device-plug"], "gl-plugs"),
+              room("room-mixed", ["device-plug", "device-white"], "gl-mixed"),
+            ],
+            zones: [],
+            groupedLights: [
+              {
+                id: "gl-plugs",
+                owner: { rid: "room-plugs", rtype: "room" },
+                type: "grouped_light",
+              },
+              {
+                id: "gl-mixed",
+                owner: { rid: "room-mixed", rtype: "room" },
+                type: "grouped_light",
+              },
+            ],
+            scenes: [],
+            entertainmentConfigs: [],
+          },
+        });
+        await adapter.connect();
+        return adapter;
+      }
+
+      it("should switch a light without dimming on for any non-zero brightness", async () => {
+        const clientCalls = freshClientCalls();
+        const adapter = await connectAdapter(clientCalls);
+
+        await adapter.handleLimitedUpdate("bridge-1", "plug", { type: "brightness", value: 257 });
+
+        assert.deepEqual(clientCalls.setLightState, [{ id: "plug", state: { on: { on: true } } }]);
+      });
+
+      it("should switch a light without dimming off for zero brightness", async () => {
+        const clientCalls = freshClientCalls();
+        const adapter = await connectAdapter(clientCalls);
+
+        await adapter.handleLimitedUpdate("bridge-1", "plug", { type: "brightness", value: 0 });
+
+        assert.deepEqual(clientCalls.setLightState, [{ id: "plug", state: { on: { on: false } } }]);
+      });
+
+      it("should send only on/off to a light without dimming for color values", async () => {
+        const clientCalls = freshClientCalls();
+        const adapter = await connectAdapter(clientCalls);
+
+        await adapter.handleLimitedUpdate("bridge-1", "plug", {
+          type: "rgb-dimmable",
+          dim: 65535,
+          r: 65535,
+          g: 0,
+          b: 0,
+        });
+        await adapter.handleLimitedUpdate("bridge-1", "plug", {
+          type: "rgb",
+          r: 0,
+          g: 65535,
+          b: 0,
+        });
+
+        assert.deepEqual(clientCalls.setLightState, [
+          { id: "plug", state: { on: { on: true } } },
+          { id: "plug", state: { on: { on: true } } },
+        ]);
+      });
+
+      it("should not send color to a dimmable light without color", async () => {
+        const clientCalls = freshClientCalls();
+        const adapter = await connectAdapter(clientCalls);
+
+        await adapter.handleLimitedUpdate("bridge-1", "white-bulb", {
+          type: "rgb-dimmable",
+          dim: 32768,
+          r: 65535,
+          g: 0,
+          b: 0,
+        });
+
+        assert.equal(clientCalls.setLightState.length, 1);
+        const { state } = clientCalls.setLightState[0];
+        assert.deepEqual(Object.keys(state).sort(), ["dimming", "on"]);
+      });
+
+      it("should send only on/off to a group without dimmable lights", async () => {
+        const clientCalls = freshClientCalls();
+        const adapter = await connectAdapter(clientCalls);
+
+        await adapter.handleLimitedUpdate("bridge-1", "gl-plugs", {
+          type: "brightness",
+          value: 32768,
+        });
+
+        assert.deepEqual(clientCalls.setGroupedLightState, [
+          { id: "gl-plugs", state: { on: { on: true } } },
+        ]);
+      });
+
+      it("should keep dimming for a group with at least one dimmable light", async () => {
+        const clientCalls = freshClientCalls();
+        const adapter = await connectAdapter(clientCalls);
+
+        await adapter.handleLimitedUpdate("bridge-1", "gl-mixed", {
+          type: "brightness",
+          value: 32768,
+        });
+
+        assert.equal(clientCalls.setGroupedLightState.length, 1);
+        assert.ok("dimming" in clientCalls.setGroupedLightState[0].state);
+      });
     });
   });
 

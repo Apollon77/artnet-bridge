@@ -51,7 +51,8 @@ Lights in the active entertainment area are automatically excluded from REST API
 Rate-limited HTTP calls to the Hue CLIP v2 API for lights, groups, and scenes.
 
 - Lights: individual color/state control
-- Groups (rooms, zones): brightness control via grouped_light resource
+- Groups (rooms, zones): color or brightness control via grouped_light resource
+- On/off devices such as smart plugs use the `brightness` mode: DMX value 0 switches off, any other value switches on
 - Scenes: activation by scene ID
 
 All REST calls use HTTPS with self-signed certificate handling (Hue bridges use a private CA).
@@ -101,7 +102,7 @@ Users can lower these limits in the bridge config but not exceed the maximum:
 | `8bit-dimmable` | 4 | Dim, R, G, B (0-255) | Color + separate dimmer |
 | `16bit` | 6 | R-coarse, R-fine, G-coarse, G-fine, B-coarse, B-fine | High-precision color |
 | `scene-selector` | 1 | 0 = no action, 1-255 maps to scene list | Scene triggering |
-| `brightness` | 1 | 0-255 | Group brightness control |
+| `brightness` | 1 | 0-255 | Lights and groups without color; on/off devices switch off at 0 and on otherwise |
 
 All values are normalized to 16-bit (0-65535) by the bridge core before reaching the adapter.
 

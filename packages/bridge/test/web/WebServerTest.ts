@@ -1,6 +1,7 @@
 import * as assert from "node:assert/strict";
 import { ArtNetReceiver } from "@artnet-bridge/artnet";
 import type {
+  Entity,
   ProtocolAdapter,
   ProtocolBridge,
   EntityUpdate,
@@ -29,6 +30,16 @@ function makeTestConfig(): AppConfig {
   };
 }
 
+function limitedEntity(id: string, layout: "rgb" | "brightness"): Entity {
+  return {
+    id,
+    metadata: { name: id, type: "light" },
+    controlMode: "limited",
+    category: "light",
+    channelLayout: { type: layout },
+  };
+}
+
 class StubAdapter implements ProtocolAdapter {
   readonly id = "stub-adapter";
   readonly name = "Stub";
@@ -42,15 +53,33 @@ class StubAdapter implements ProtocolAdapter {
   async pair(_target: DiscoveredBridge): Promise<PairingResult> {
     return { success: true, connection: { key: "test-key" } };
   }
+  readonly limitedUpdates = new Array<string>();
+
   async getBridges(): Promise<ProtocolBridge[]> {
-    return [];
+    const metadata = { name: "Stub bridge", host: "192.168.1.1" };
+    return [
+      {
+        id: "mixed-bridge",
+        metadata,
+        entities: [limitedEntity("color-light", "rgb"), limitedEntity("plug", "brightness")],
+        rateLimits: {},
+      },
+      {
+        id: "plug-bridge",
+        metadata,
+        entities: [limitedEntity("plug", "brightness")],
+        rateLimits: {},
+      },
+    ];
   }
   async handleRealtimeUpdate(_bridgeId: string, _updates: EntityUpdate[]): Promise<void> {}
   async handleLimitedUpdate(
     _bridgeId: string,
-    _entityId: string,
+    entityId: string,
     _value: EntityValue,
-  ): Promise<void> {}
+  ): Promise<void> {
+    this.limitedUpdates.push(entityId);
+  }
   getStatus(): AdapterStatus {
     return { connected: true, bridges: {} };
   }
@@ -61,6 +90,7 @@ describe("WebServer", () => {
   let baseUrl: string;
   let tmpDir: string;
   let configManager: ConfigManager;
+  let adapter: StubAdapter;
 
   before(async () => {
     tmpDir = mkdtempSync(join(tmpdir(), "webserver-test-"));
@@ -72,7 +102,7 @@ describe("WebServer", () => {
     const factories = new Map();
     const orchestrator = new BridgeOrchestrator(config, artnet, factories);
 
-    const adapter = new StubAdapter();
+    adapter = new StubAdapter();
 
     server = new WebServer({
       port: 0, // ephemeral port
@@ -144,5 +174,34 @@ describe("WebServer", () => {
   it("GET /api/bridges/:id/resources returns 404 for unknown bridge", async () => {
     const res = await fetch(`${baseUrl}/api/bridges/nonexistent/resources`);
     assert.equal(res.status, 404);
+  });
+
+  describe("POST /api/bridges/:id/test", () => {
+    function postTest(bridgeId: string, body: object) {
+      adapter.limitedUpdates.length = 0;
+      return fetch(`${baseUrl}/api/bridges/${bridgeId}/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it("sends only to color entities without a selection", async () => {
+      const res = await postTest("mixed-bridge", { color: [255, 0, 0] });
+      assert.equal(res.status, 200);
+      assert.deepEqual(adapter.limitedUpdates, ["color-light"]);
+    });
+
+    it("sends to an entity without color if it is selected", async () => {
+      const res = await postTest("mixed-bridge", { color: [255, 0, 0], entityIds: ["plug"] });
+      assert.equal(res.status, 200);
+      assert.deepEqual(adapter.limitedUpdates, ["plug"]);
+    });
+
+    it("rejects a test without a selection if the bridge has no color entities", async () => {
+      const res = await postTest("plug-bridge", { color: [255, 0, 0] });
+      assert.equal(res.status, 400);
+      assert.deepEqual(adapter.limitedUpdates, []);
+    });
   });
 });

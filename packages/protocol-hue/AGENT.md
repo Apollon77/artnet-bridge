@@ -94,6 +94,8 @@ await setter(entityId, { on: { on: false } });
 
 All-zero RGB values = turn light OFF. Brightness minimum is 1% when on (Hue rejects 0% with `on: true`).
 
+`color` and `dimming` are sent only if the entity's `hasColor` / `hasDimming` metadata is true, because the bridge returns an error for `dimming` on a smart plug. A plug light resource has neither field, so it receives on/off only. A group has a feature if any member light has it. Both flags are set at connect, like the channel layout. The web test route sends `rgb-dimmable` (all-zero `rgb` for off) to the selected limited lights and groups regardless of their channel layout. Without a selection it targets color entities only.
+
 ### Rate limits
 
 | Category | Limit | Notes |
